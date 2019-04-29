@@ -6,7 +6,7 @@ class FCraneModelModule : public IModuleInterface
 {
 public:
 
-	/** IModuleInterface implementation */
-	void StartupModule() override;
-	void ShutdownModule() override;
+    /** IModuleInterface implementation */
+    void StartupModule() override;
+    void ShutdownModule() override;
 };
