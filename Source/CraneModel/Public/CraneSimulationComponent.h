@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "Components/SceneComponent.h"
 #include "Model.h"
+#include <memory>
 #include "CraneSimulationComponent.generated.h"
 
 
@@ -12,8 +13,9 @@ class CRANEMODEL_API UCraneSimulationComponent : public UActorComponent
 {
     GENERATED_BODY()
 
-    crane3d::Model Model;
-    crane3d::ModelState State;
+    // in order to allow live editing, we need
+    // to store these as pointers
+    std::unique_ptr<crane3d::Model> Model;
 
 public:	
 

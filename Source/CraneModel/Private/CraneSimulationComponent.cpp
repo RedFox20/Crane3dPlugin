@@ -10,7 +10,9 @@ UCraneSimulationComponent::UCraneSimulationComponent()
 void UCraneSimulationComponent::BeginPlay()
 {
     Super::BeginPlay();
-    UpdateVisibleFields(Model.GetState());
+
+    Model = std::make_unique<crane3d::Model>();
+    UpdateVisibleFields(Model->GetState());
 }
 
 void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::ModelState& state)
@@ -31,14 +33,14 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    crane3d::ModelState state = Model.Update(DeltaTime, ForceRail, ForceCart, ForceCable);
+    crane3d::ModelState state = Model->Update(DeltaTime, ForceRail, ForceCart, ForceCable);
     UpdateVisibleFields(state);
 
     if (RailComponent)
         RailComponent->SetRelativeLocation(FVector{ RailOffset, 0, 0 });
 
     if (CartComponent)
-        CartComponent->SetRelativeLocation(FVector{ 0, CartOffset, 0 });
+        CartComponent->SetRelativeLocation(FVector{ RailOffset, CartOffset, 0 });
 
     if (PayloadComponent)
         PayloadComponent->SetRelativeLocation(PayloadPosition);
