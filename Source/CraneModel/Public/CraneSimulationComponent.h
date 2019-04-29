@@ -27,9 +27,7 @@ class CRANEMODEL_API UCraneSimulationComponent : public UActorComponent
 {
     GENERATED_BODY()
 
-    // in order to allow live editing, we need
-    // to store these as pointers
-    std::unique_ptr<crane3d::Model> Model;
+    std::unique_ptr<crane3d::Model> Model; // need a stable pointer for UE4 editor.
 
 public:	
 
