@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Crane3d",
+	"Description": "3DCrane Physics Simulation Plugin",
+	"Category": "Other",
+	"CreatedBy": "Jorma Rebane",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "CraneModel",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
