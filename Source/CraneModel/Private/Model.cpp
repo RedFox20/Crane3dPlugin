@@ -16,7 +16,7 @@ namespace crane3d
 	Model::Model()
 	{
 		// Invert the alfa angle as required by the model
-		// α = 90° - α
+		// α := 90° - α
 		Alfa = _90degs - Alfa;
 	}
 
@@ -94,9 +94,10 @@ namespace crane3d
 	{
 		x1 = Yw; x2 = Yw_vel;
 		x3 = Xw; x4 = Xw_vel;
-		// relation: cosα = -sinΔα
-		x5 = asin(-cos(Alfa)); // Δα
-		x6 = asin(-cos(Alfa_vel));
+		// @note This simplified model assumes that α and β are extremely small
+		// relation: cosα = -Δα
+		x5 = -cos(Alfa); // Δα
+		x6 = -cos(Alfa_vel);
 		x7 = sin(Beta); // Δβ
 		x8 = sin(Beta_vel);
 
@@ -129,8 +130,8 @@ namespace crane3d
 
 		// turn back into Alfa and Beta
 		// relation: cosα = -sinΔα
-		Alfa     = acos(-sin(x5));
-		Alfa_vel = acos(-sin(x6));
+		Alfa     = acos(-x5);
+		Alfa_vel = acos(-x6);
 		Beta     = asin(x7);
 		Beta_vel = asin(x8);
 	}
