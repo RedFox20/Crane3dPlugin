@@ -33,6 +33,25 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+    // update model with parameters
+    Model->Type = (crane3d::ModelType)ModelType;
+
+    Model->Mrail = RailMass;
+    Model->Mcart = CartMass;
+    Model->Mpayload = PayloadMass;
+    Model->G = Gravity;
+
+    Model->RailFriction = RailFriction;
+    Model->CartFriction = CartFriction;
+    Model->LineFriction = LineFriction;
+
+    Model->RailLimitMin = RailLimitMin;
+    Model->RailLimitMax = RailLimitMax;
+    Model->CartLimitMin = CartLimitMin;
+    Model->CartLimitMax = CartLimitMax;
+    Model->LineLimitMin = LineLimitMin;
+    Model->LineLimitMax = LineLimitMax;
+
     crane3d::ModelState state = Model->Update(DeltaTime, ForceRail, ForceCart, ForceCable);
     UpdateVisibleFields(state);
 

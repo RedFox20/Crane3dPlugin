@@ -53,14 +53,16 @@ namespace crane3d
                 case ModelType::Linear:
                     BasicLinearModel(SimulationStep, Frail, Fcart);
                     break;
-                case ModelType::DynamicConstantPendulum:
+                case ModelType::NonLinearConstantLine:
                     NonLinearConstantPendulum(SimulationStep, Frail, Fcart);
                     break;
-                case ModelType::DynamicComplete:
+                case ModelType::NonLinearComplete:
                     NonLinearCompleteModel(SimulationStep, Frail, Fcart, Fline);
                     break;
             }
         }
+
+        ApplyLimits();
 
         // and finally, return the observable current state
         return GetState();
@@ -90,11 +92,13 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
+    // This simplified model assumes that α and β are very small
     void Model::BasicLinearModel(double dt, double Frail, double Fcart)
     {
         x1 = Yw; x2 = Yw_vel;
         x3 = Xw; x4 = Xw_vel;
-        // @note This simplified model assumes that α and β are extremely small
+        x9 = R; x10 = R_vel;
+
         // relation: cosα = -Δα
         x5 = -cos(Alfa); // Δα
         x6 = -cos(Alfa_vel);
@@ -115,12 +119,14 @@ namespace crane3d
         d10 = -N3 + G;
         
         // OUTPUT: apply Euler method for integrating the derived d1..d10
-        Yw += dt * d1;
-        Xw += dt * d3;
         Yw_vel += dt * d2;
         Xw_vel += dt * d4;
-        //R += dt * d9;
         //R_vel += dt * d10;
+
+        // apply velocity?
+        Yw += dt * d3;
+        Xw += dt * d5;
+        //R += dt * d7;
 
         // integrate Δα and Δβ
         x5 = dt * d5;
@@ -252,6 +258,20 @@ namespace crane3d
     constexpr double Dampen(double x)
     {
         return abs(x) < 0.0000001 ? 0.0 : x;
+    }
+
+    constexpr double clamp(double x, double min, double max)
+    {
+        if (x < min) return min;
+        if (x > max) return max;
+        return x;
+    }
+
+    void Model::ApplyLimits()
+    {
+        Xw = clamp(Xw, RailLimitMin, RailLimitMax);
+        Yw = clamp(Yw, CartLimitMin, CartLimitMax);
+        R  = clamp(R, LineLimitMin, LineLimitMax);
     }
 
     void Model::DampenAllValues()

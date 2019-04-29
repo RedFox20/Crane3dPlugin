@@ -13,10 +13,10 @@ namespace crane3d
         
         // Non-linear model with constant pendulum length with 2 control forces.
         // LiftLine (Fline) is ignored
-        DynamicConstantPendulum,
+        NonLinearConstantLine,
 
         // Non-linear fully dynamic model with all 3 forces
-        DynamicComplete,
+        NonLinearComplete,
     };
 
     /**
@@ -59,6 +59,16 @@ namespace crane3d
         double RailFriction = 100.0; // Tx rail friction
         double CartFriction = 82.0;  // Ty cart friction
         double LineFriction = 75.0;  // Tr liftline friction 
+
+        // cart, rail, line limits
+        double RailLimitMin = -30.0;
+        double RailLimitMax = +30.0;
+
+        double CartLimitMin = -35.0;
+        double CartLimitMax = +35.0;
+
+        double LineLimitMin = 5.0;
+        double LineLimitMax = 90.0;
 
     private:
         double Xw = 0.0; // distance of the rail with the cart from the center of the construction frame
@@ -126,6 +136,7 @@ namespace crane3d
 
         // ------------------
 
+        void ApplyLimits();
         void DampenAllValues();
     };
 
