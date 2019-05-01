@@ -8,6 +8,21 @@ UCraneSimulationComponent::UCraneSimulationComponent()
     PrimaryComponentTick.bCanEverTick = true;
 }
 
+void UCraneSimulationComponent::AddRailX(float axisValue, float multiplier)
+{
+    ForceRail = axisValue * multiplier;
+}
+
+void UCraneSimulationComponent::AddCartY(float axisValue, float multiplier)
+{
+    ForceCart = axisValue * multiplier;
+}
+
+void UCraneSimulationComponent::AddLineZ(float axisValue, float multiplier)
+{
+    ForceCable = axisValue * multiplier;
+}
+
 void UCraneSimulationComponent::BeginPlay()
 {
     Super::BeginPlay();
@@ -28,6 +43,10 @@ void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::ModelState& s
     GEngine->AddOnScreenDebugMessage(4, 5.0f, FColor::Red, FString::Printf(L"Alfa: %.2f", state.Alfa));
     GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Red, FString::Printf(L"Beta: %.2f", state.Beta));
     GEngine->AddOnScreenDebugMessage(6, 5.0f, FColor::Red, FString::Printf(L"Line: %.2f", state.LiftLine));
+
+    GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Red, FString::Printf(L"Fcart: %.2f", ForceCart));
+    GEngine->AddOnScreenDebugMessage(8, 5.0f, FColor::Red, FString::Printf(L"Frail: %.2f", ForceRail));
+    GEngine->AddOnScreenDebugMessage(9, 5.0f, FColor::Red, FString::Printf(L"Fcabl: %.2f", ForceCable));
 }
 
 void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -55,6 +74,11 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
     crane3d::ModelState state = Model->Update(DeltaTime, ForceRail, ForceCart, ForceCable);
     UpdateVisibleFields(state);
+
+    // reset all forces for this frame
+    ForceRail = 0.0;
+    ForceCart = 0.0;
+    ForceCable = 0.0;
 
     if (RailComponent)
         RailComponent->SetRelativeLocation(FVector{ RailOffset, 0, 0 });

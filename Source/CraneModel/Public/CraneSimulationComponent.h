@@ -86,8 +86,16 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crane Outputs")
     FVector PayloadPosition;
 
-    // Sets default values for this component's properties
     UCraneSimulationComponent();
+
+    UFUNCTION(BlueprintCallable, Category = "Crane Force Inputs")
+    void AddRailX(float axisValue, float multiplier);
+
+    UFUNCTION(BlueprintCallable, Category = "Crane Force Inputs")
+    void AddCartY(float axisValue, float multiplier);
+
+    UFUNCTION(BlueprintCallable, Category = "Crane Force Inputs")
+    void AddLineZ(float axisValue, float multiplier);
 
 protected:
     void BeginPlay() override;

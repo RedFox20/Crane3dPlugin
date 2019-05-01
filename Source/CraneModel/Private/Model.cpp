@@ -99,6 +99,13 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
+    double ApplyFriction(double force, double friction)
+    {
+        if (force <= friction)
+            return 0.0;
+        return sign(force) * (abs(force) - friction);
+    }
+
     void Model::PrepareBasicRelations(double Frail, double Fcart, double Fline)
     {
         // prepare basic relations
@@ -111,9 +118,9 @@ namespace crane3d
         T2 = RailFriction / (Mcart + Mpayload); // T2 = Tx / (Mw + Mc) | rail friction acceleration force
         T3 = LineFriction / Mpayload;           // T3 = Tr / Mc        | line friction acceleration force
 
-        N1 = u1 - T1; // cart net acceleration force
-        N2 = u2 - T2; // rail net acceleration force
-        N3 = u3 - T3; // line net acceleration force
+        N1 = ApplyFriction(u1, T1); // cart net acceleration force
+        N2 = ApplyFriction(u2, T2); // rail net acceleration force
+        N3 = ApplyFriction(u3, T3); // line net acceleration force
 
         // payload ratios:
         μ1 = Mpayload / Mcart;           // μ1 = Mc / Mw
@@ -137,7 +144,7 @@ namespace crane3d
         // OUTPUT: apply current velocity
         Yw += dt * Yw_vel;
         Xw += dt * Xw_vel;
-        R  += dt * R_vel;
+        //R  += dt * R_vel;
         Δα += dt * Δα_vel;
         Δβ += dt * Δβ_vel;
 
