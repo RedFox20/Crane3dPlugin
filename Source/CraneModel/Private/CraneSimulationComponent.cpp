@@ -1,6 +1,7 @@
 // Copyright (c) 2019 - Jorma Rebane 3DCrane UE4
 #include "CraneSimulationComponent.h"
 #include "EngineMinimal.h"
+#include "DrawDebugHelpers.h"
 
 UCraneSimulationComponent::UCraneSimulationComponent()
 {
@@ -63,5 +64,16 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
     if (PayloadComponent)
         PayloadComponent->SetRelativeLocation(PayloadPosition);
+
+    // DEBUG visualization
+    if (RailComponent && CartComponent && PayloadComponent)
+    {
+        FVector center = RailComponent->GetOwner()->GetActorLocation() + FVector{ 0, 0, 50 };
+        FVector cart = center + FVector{ RailOffset, CartOffset, CartComponent->GetComponentLocation().Z };
+        FVector payload = PayloadComponent->GetComponentLocation();
+
+        UWorld* world = GetWorld();
+        DrawDebugLine(world, cart, payload, FColor(0, 0, 255), false, -1, 0, 2);
+    }
 }
 

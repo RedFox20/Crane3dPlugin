@@ -9,7 +9,13 @@ namespace crane3d
 
     // time between each discrete step of the simulation
     static constexpr double SimulationStep = 0.001;
-    static constexpr double _90degs = (3.1415926 / 2);
+    static constexpr double _PI = 3.14159265358979323846;
+    static constexpr double _90degs = (_PI / 2);
+
+    constexpr double sign(double x)
+    {
+        return x > 0 ? 1.0 : (x < 0 ? -1.0 : 0.0);
+    }
 
     //////////////////////////////////////////////////////////////////////
     
@@ -27,15 +33,15 @@ namespace crane3d
         ModelState s;
         s.RailOffset = Xw;
         s.CartOffset = Yw;
-        s.LiftLine = R;
+        s.LiftLine   = R;
 
         // Formulas given by 3DCrane mathematical model description
         if (Type == ModelType::Linear)
         {
             s.Alfa = Δα;
             s.Beta = Δβ;
-            s.PayloadX = Xw + R*Δβ;
-            s.PayloadY = Yw - R*Δα;
+            s.PayloadX = Xw + R * Δβ;
+            s.PayloadY = Yw - R * Δα;
             s.PayloadZ = -R;
         }
         else
@@ -50,6 +56,16 @@ namespace crane3d
         }
         return s;
     }
+
+    void ModelState::Print() const
+    {
+        printf("Alfa: %.2f Beta: %.2f Rail: %.2f Cart: %.2f Line: %.2f "
+               "X: %.2f Y: %.2f Z: %.2f\n",
+                Alfa, Beta, RailOffset, CartOffset, LiftLine,
+                PayloadX, PayloadY, PayloadZ);
+    }
+
+    //////////////////////////////////////////////////////////////////////
 
     ModelState Model::Update(double deltaTime, double Frail, double Fcart, double Fline)
     {
@@ -72,9 +88,10 @@ namespace crane3d
                     NonLinearCompleteModel(SimulationStep, Frail, Fcart, Fline);
                     break;
             }
-        }
 
-        ApplyLimits();
+            ApplyLimits();
+            GetState().Print();
+        }
 
         // and finally, return the observable current state
         return GetState();
@@ -98,6 +115,7 @@ namespace crane3d
         N2 = u2 - T2; // rail net acceleration force
         N3 = u3 - T3; // line net acceleration force
 
+        // payload ratios:
         μ1 = Mpayload / Mcart;           // μ1 = Mc / Mw
         μ2 = Mpayload / (Mcart + Mrail); // μ2 = Mc / (Mw + Ms)
     }
@@ -110,10 +128,10 @@ namespace crane3d
         PrepareBasicRelations(Frail, Fcart, 0.0);
 
         // calculate accelerations:
-        double aYw = N1 - μ1*Δα*N3;
-        double aXw = N2 + μ2*Δβ*N3;
-        double aΔα =  (N1 - μ1*Δα*N3 - G*Δα - 2*Δα_vel*R_vel) / R;
-        double aΔβ = -(N2 + μ2*Δβ*N3 + G*Δβ + 2*Δβ_vel*R_vel) / R;
+        double aYw = N1 - μ1 * Δα * N3;
+        double aXw = N2 + μ2 * Δβ * N3;
+        double aΔα = +(aYw - G*Δα - 2*Δα_vel*R_vel) / R;
+        double aΔβ = -(aXw + G*Δβ + 2*Δβ_vel*R_vel) / R;
         double aR  = -N3 + G;
         
         // OUTPUT: apply current velocity
@@ -193,11 +211,6 @@ namespace crane3d
     
     //////////////////////////////////////////////////////////////////////
 
-    constexpr double sign(double x)
-    {
-        return x > 0 ? 1.0 : (x < 0 ? -1.0 : 0.0);
-    }
-
     void Model::NonLinearCompleteModel(double dt, double Frail, double Fcart, double Fline)
     {
         PrepareNonLinearState();
@@ -251,8 +264,8 @@ namespace crane3d
 
     constexpr double clamp(double x, double min, double max)
     {
-        if (x < min) return min;
-        if (x > max) return max;
+        if (x <= min) return min;
+        if (x >= max) return max;
         return x;
     }
 
@@ -261,6 +274,12 @@ namespace crane3d
         Xw = clamp(Xw, RailLimitMin, RailLimitMax);
         Yw = clamp(Yw, CartLimitMin, CartLimitMax);
         R  = clamp(R, LineLimitMin, LineLimitMax);
+        Alfa = clamp(Alfa, -_PI, +_PI);
+        Beta = clamp(Beta, -_PI, +_PI);
+
+        // Δα and Δβ must be very small by definition
+        Δα = clamp(Δα, -0.2, +0.2);
+        Δβ = clamp(Δβ, -0.2, +0.2);
     }
 
     void Model::DampenAllValues()
@@ -276,18 +295,6 @@ namespace crane3d
         Alfa_vel = Dampen(Alfa_vel);
         Beta_vel = Dampen(Beta_vel);
         R_vel    = Dampen(R_vel);
-    }
-
-    //////////////////////////////////////////////////////////////////////
-
-    void ModelState::Print() const
-    {
-        printf("Alfa: %.2f Beta: %.2f\n"
-            "Rail: %.2f Cart: %.2f Line: %.2f\n"
-            "X: %.2f Y: %.2f Z: %.2f\n",
-            Alfa, Beta,
-            RailOffset, CartOffset, LiftLine,
-            PayloadX, PayloadY, PayloadZ);
     }
 
     //////////////////////////////////////////////////////////////////////

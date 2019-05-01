@@ -83,7 +83,7 @@ namespace crane3d
     private:
         double Xw = 0.0; // distance of the rail with the cart from the center of the construction frame
         double Yw = 0.0; // distance of the cart from the center of the rail;
-        double R = 0.5; // length of the lift-line
+        double R  = 0.5; // length of the lift-line
         double Alfa = 0.0; // α angle between y axis (cart moving left-right) and the lift-line
         double Beta = 0.0; // β angle between negative direction on the z axis and the projection
                            // of the lift-line onto the xz plane
