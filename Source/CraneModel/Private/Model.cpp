@@ -18,24 +18,36 @@ namespace crane3d
         // Invert the alfa angle as required by the model
         // α := 90° - α
         Alfa = _90degs - Alfa;
+        Δα = 0.0;
     }
 
     ModelState Model::GetState() const
     {
         // Restore the internal alfa representation
-        double α = _90degs - Alfa;
         ModelState s;
-        s.Alfa = α;
-        s.Beta = Beta;
         s.RailOffset = Xw;
         s.CartOffset = Yw;
         s.LiftLine = R;
 
-        // Calculate payload position from Xw,Yw,α,β,R
-        // Formula given by 3DCrane mathematical model description
-        s.PayloadX = Xw + R * sin(α) * sin(Beta);
-        s.PayloadY = Yw + R * cos(α);
-        s.PayloadZ = -R * sin(α) * cos(Beta);
+        // Formulas given by 3DCrane mathematical model description
+        if (Type == ModelType::Linear)
+        {
+            s.Alfa = Δα;
+            s.Beta = Δβ;
+            s.PayloadX = Xw + R*Δβ;
+            s.PayloadY = Yw - R*Δα;
+            s.PayloadZ = -R;
+        }
+        else
+        {
+            // Calculate payload position from Xw,Yw,α,β,R
+            double α = _90degs - Alfa;
+            s.Alfa = α;
+            s.Beta = Beta;
+            s.PayloadX = Xw + R * sin(α) * sin(Beta);
+            s.PayloadY = Yw + R * cos(α);
+            s.PayloadZ = -R * sin(α) * cos(Beta);
+        }
         return s;
     }
 
@@ -95,51 +107,28 @@ namespace crane3d
     // This simplified model assumes that α and β are very small
     void Model::BasicLinearModel(double dt, double Frail, double Fcart)
     {
-        x1 = Yw; x2 = Yw_vel;
-        x3 = Xw; x4 = Xw_vel;
-        x9 = R; x10 = R_vel;
-
-        // relation: cosα = -Δα
-        x5 = -cos(Alfa); // Δα
-        x6 = -cos(Alfa_vel);
-        x7 = sin(Beta); // Δβ
-        x8 = sin(Beta_vel);
-
         PrepareBasicRelations(Frail, Fcart, 0.0);
 
-        d1 = x2;
-        d2 = N1 - μ1*x5*N3;
-        d3 = x4;
-        d4 = N2 + μ2*x7*N3;
-        d5 = x6;
-        d6 = (N1 - μ1*x5*N3 - G*x5 - 2*x6*x10) / x9;
-        d7 = x8;
-        d8 = -(N2 + μ2*x7*N3 + G*x7 + 2*x8*x10) / x9;
-        d9 = x10;
-        d10 = -N3 + G;
+        // calculate accelerations:
+        double aYw = N1 - μ1*Δα*N3;
+        double aXw = N2 + μ2*Δβ*N3;
+        double aΔα =  (N1 - μ1*Δα*N3 - G*Δα - 2*Δα_vel*R_vel) / R;
+        double aΔβ = -(N2 + μ2*Δβ*N3 + G*Δβ + 2*Δβ_vel*R_vel) / R;
+        double aR  = -N3 + G;
         
-        // OUTPUT: apply Euler method for integrating the derived d1..d10
-        Yw_vel += dt * d2;
-        Xw_vel += dt * d4;
-        //R_vel += dt * d10;
+        // OUTPUT: apply current velocity
+        Yw += dt * Yw_vel;
+        Xw += dt * Xw_vel;
+        R  += dt * R_vel;
+        Δα += dt * Δα_vel;
+        Δβ += dt * Δβ_vel;
 
-        // apply velocity?
-        Yw += dt * d3;
-        Xw += dt * d5;
-        //R += dt * d7;
-
-        // integrate Δα and Δβ
-        x5 = dt * d5;
-        x6 = dt * d6;
-        x7 = dt * d7;
-        x8 = dt * d8;
-
-        // turn back into Alfa and Beta
-        // relation: cosα = -sinΔα
-        Alfa     = acos(-x5);
-        Alfa_vel = acos(-x6);
-        Beta     = asin(x7);
-        Beta_vel = asin(x8);
+        // compute next velocities  v = a*t
+        Yw_vel += dt * aYw;
+        Xw_vel += dt * aXw;
+        Δα_vel += dt * aΔα;
+        Δβ_vel += dt * aΔβ;
+        R_vel  += dt * aR;
     }
 
     //////////////////////////////////////////////////////////////////////

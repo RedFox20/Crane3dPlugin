@@ -10,7 +10,7 @@ int main()
 	double Fline = 0.0; // force driving the cable
 
 	Model model;
-	ModelState state = model.Update(60.0, Frail, Fcart, Fline);
+	ModelState state = model.Update(10.0, Frail, Fcart, Fline);
 	state.Print();
 
 	system("pause");

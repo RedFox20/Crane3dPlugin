@@ -19,6 +19,16 @@ namespace crane3d
         NonLinearComplete,
     };
 
+    struct Vec3d
+    {
+        double X = 0.0, Y = 0.0, Z = 0.0;
+
+        Vec3d operator+(const Vec3d& v) const { return { X + v.X, Y + v.Y, Z + v.Z }; }
+        Vec3d operator-(const Vec3d& v) const { return { X - v.X, Y - v.Y, Z - v.Z }; }
+        Vec3d operator*(const Vec3d& v) const { return { X * v.X, Y * v.Y, Z * v.Z }; }
+        Vec3d operator/(const Vec3d& v) const { return { X / v.X, Y / v.Y, Z / v.Z }; }
+    };
+
     /**
      * Output state of the model
      */
@@ -77,6 +87,10 @@ namespace crane3d
         double Alfa = 0.0; // α angle between y axis (cart moving left-right) and the lift-line
         double Beta = 0.0; // β angle between negative direction on the z axis and the projection
                            // of the lift-line onto the xz plane
+        
+        // only used for basic linear model
+        double Δα = 0.0, Δα_vel = 0.0;
+        double Δβ = 0.0, Δβ_vel = 0.0;
 
         // velocity time derivatives
         double Xw_vel = 0.0;
@@ -96,7 +110,6 @@ namespace crane3d
 
         // simulation time sink for running correct number of iterations every update
         double SimulationTime = 0.0;
-
         int SimulationCounter = 0; // for debugging
 
     public:
