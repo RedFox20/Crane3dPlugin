@@ -10,6 +10,9 @@ namespace crane3d
     {
         // The most basic and foolproof crane model
         Linear,
+
+        // Variation of the first linear model
+        Linear2,
         
         // Non-linear model with constant pendulum length with 2 control forces.
         // LiftLine (Fline) is ignored
@@ -17,6 +20,9 @@ namespace crane3d
 
         // Non-linear fully dynamic model with all 3 forces
         NonLinearComplete,
+
+        // Original non-linear fully dynamic model with all 3 forces and refined friction formulae
+        NonLinearOriginal,
     };
 
     struct Vec3d
@@ -81,8 +87,8 @@ namespace crane3d
         double LineLimitMax = 90.0;
 
     private:
-        double Xw = 0.0; // distance of the rail with the cart from the center of the construction frame
-        double Yw = 0.0; // distance of the cart from the center of the rail;
+        double X = 0.0; // distance of the rail with the cart from the center of the construction frame
+        double Y = 0.0; // distance of the cart from the center of the rail;
         double R  = 0.5; // length of the lift-line
         double Alfa = 0.0; // α angle between y axis (cart moving left-right) and the lift-line
         double Beta = 0.0; // β angle between negative direction on the z axis and the projection
@@ -93,20 +99,21 @@ namespace crane3d
         double Δβ = 0.0, Δβ_vel = 0.0;
 
         // velocity time derivatives
-        double Xw_vel = 0.0;
-        double Yw_vel = 0.0;
+        double X_vel = 0.0;
+        double Y_vel = 0.0;
         double R_vel = 0.0;
         double Alfa_vel = 0.0;
         double Beta_vel = 0.0;
 
         // x1..x10 as per 3DCrane mathematical model description
-        double x1, x2, x3, x4, x5, x6, x7, x8, x9, x10; // state
-        double d1, d2, d3, d4, d5, d6, d7, d8, d9, d10; // derived state
-        double s5, s7, c5, c7; // sinα, sinβ, cosα, cosβ
-        double u1, u2, u3; // acceleration forces of cart, rail, line
-        double T1, T2, T3; // friction forces of cart, rail, line
-        double N1, N2, N3; // net acceleration of cart, rail, line
-        double μ1, μ2; // payload/cart ratio;  payload/railcart ratio
+        double u1, u2, u3; // driving acceleration of cart, rail, wind
+        double T1, T2, T3; // friction accel of cart, rail, wind
+        double N1, N2, N3; // net acceleration of cart, rail, wind
+
+        double ADrcart, ADrrail, ADrwind; // driving accel of cart, rail, wind
+        double AFrcart, AFrrail, AFrwind; // friction accel of cart, rail, wind
+        double ANetcart, ANetrail, ANetwind; // net accel of cart, rail, wind
+        double μ1, μ2; // coefficient of friction: payload/cart ratio;  payload/railcart ratio
 
         // simulation time sink for running correct number of iterations every update
         double SimulationTime = 0.0;
@@ -138,14 +145,13 @@ namespace crane3d
         // ------------------
         
         void BasicLinearModel(double dt, double Frail, double Fcart);
+        void BasicLinearModel2(double dt, double Frail, double Fcart);
 
         // ------------------
 
-        void PrepareNonLinearState();
-        void DeriveNonLinearOutput(double dt, bool deriveLiftLine);
-
         void NonLinearConstantPendulum(double dt, double Frail, double Fcart);
         void NonLinearCompleteModel(double dt, double Frail, double Fcart, double Fline);
+        void NonLinearOriginalModel(double dt, double Frail, double Fcart, double Fline);
 
         // ------------------
 

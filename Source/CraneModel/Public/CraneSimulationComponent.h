@@ -13,12 +13,18 @@ enum class ECraneModelType : uint8
     // The most basic and foolproof crane model
     Linear,
         
+    // Variation of the first linear model
+    Linear2,
+
     // Non-linear model with constant pendulum length with 2 control forces.
     // LiftLine (Fline) is ignored
     NonLinearConstantLine,
 
     // Non-linear fully dynamic model with all 3 forces
     NonLinearComplete,
+
+    // Original non-linear fully dynamic model with all 3 forces and refined friction formulae
+    NonLinearOriginal,
 };
 
 
