@@ -66,10 +66,11 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     // update model with parameters
     Model->Type = static_cast<crane3d::ModelType>(ModelType);
 
-    Model->Mrail = RailMass;
-    Model->Mcart = CartMass;
-    Model->Mpayload = PayloadMass;
+    Model->Mrail = crane3d::Mass{RailMass};
+    Model->Mcart = crane3d::Mass{CartMass};
+    Model->Mpayload = crane3d::Mass{PayloadMass};
     Model->G = Gravity;
+    Model->g = crane3d::Accel{Gravity};
 
     Model->RailFriction = RailFriction;
     Model->CartFriction = CartFriction;
@@ -82,7 +83,8 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Model->LineLimitMin = LineLimitMin;
     Model->LineLimitMax = LineLimitMax;
 
-    crane3d::ModelState state = Model->Update(DeltaTime, ForceRail, ForceCart, ForceWinding);
+    using crane3d::Force;
+    crane3d::ModelState state = Model->Update(DeltaTime, Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
     UpdateVisibleFields(state);
 
     // reset all forces for this frame

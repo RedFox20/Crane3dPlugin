@@ -18,12 +18,60 @@ namespace crane3d
         // LiftLine (Fwind) is ignored
         NonLinearConstantLine,
 
+
         // Non-linear fully dynamic model with all 3 forces
         NonLinearComplete,
 
         // Original non-linear fully dynamic model with all 3 forces and refined friction formulae
         NonLinearOriginal,
     };
+
+    //////////////////////////////////////////////////////////////////////
+    // Basic physics relations
+
+    template<class T> struct Unit
+    {
+        double Value = 0.0;
+        static const Unit Zero;
+        Unit operator+(Unit b) const { return { Value + b.Value }; }
+        Unit operator-(Unit b) const { return { Value - b.Value }; }
+        Unit operator+(double x) const { return { Value + x }; }
+        Unit operator-(double x) const { return { Value - x }; }
+        Unit operator*(double x) const { return { Value * x }; }
+        Unit operator/(double x) const { return { Value / x }; }
+        double operator/(Unit b) const { return Value / b.Value; }
+        Unit operator-() const { return { -Value }; }
+        bool operator>(Unit b) const { return Value > b.Value; }
+    };
+    struct _Force {};
+    struct _Mass  {};
+    struct _Accel {};
+    using Force = Unit<_Force>;
+    using Mass  = Unit<_Mass>;
+    using Accel = Unit<_Accel>;
+
+    inline double sign(double x) { return x > 0 ? 1.0 : (x < 0 ? -1.0 : 0.0); }
+    template<class T> inline double sign(Unit<T> x) { return sign(x.Value); }
+    template<class T> inline Unit<T> abs(Unit<T> x) { return { std::abs(x.Value) }; }
+
+    // u' = x * u
+    template<class T> inline Unit<T> operator*(double x, Unit<T> u) { return { x * u.Value }; }
+
+    // F = ma
+    inline Force operator*(Mass m, Accel a) { return { m.Value * a.Value }; }
+    inline Force operator*(Accel a, Mass m) { return { m.Value * a.Value }; }
+    // a = F/m
+    inline Accel operator/(Force F, Mass m) { return { F.Value / m.Value }; }
+
+
+    // compute new velocity:
+    // v = v0 + a * Δt
+    inline double integrate_velocity(double v0, Accel a, double Δt)
+    {
+        return v0 + a.Value * Δt;
+    }
+
+    //////////////////////////////////////////////////////////////////////
 
     struct Vec3d
     {
@@ -67,10 +115,11 @@ namespace crane3d
          */
         // Which model to use? Linear is simple and foolproof		
         ModelType Type = ModelType::Linear;
-        double Mpayload = 1.000; // Mc mass of the payload
-        double Mcart    = 1.155; // Mw mass of the cart
-        double Mrail    = 2.200; // Ms mass of the moving rail
-        double G = 9.81; // gravity constant, 9.81m/s^2
+        Mass Mpayload { 1.000 }; // Mc mass of the payload
+        Mass Mcart    { 1.155 }; // Mw mass of the cart
+        Mass Mrail    { 2.200 }; // Ms mass of the moving rail
+        double G { 9.81 }; // gravity constant, 9.81m/s^2
+        Accel g { 9.81 }; // gravity constant, 9.81m/s^2
 
         double RailFriction = 100.0; // Tx rail friction
         double CartFriction = 82.0;  // Ty cart friction
@@ -112,14 +161,14 @@ namespace crane3d
 
         double ADrcart, ADrrail, ADrwind; // driving accel of cart, rail, wind
         double AFrcart, AFrrail, AFrwind; // friction accel of cart, rail, wind
-        double ANetcart, ANetrail, ANetwind; // net accel of cart, rail, wind
+        Accel ANetcart, ANetrail, ANetwind; // net accel of cart, rail, wind
         double μ1, μ2; // coefficient of friction: payload/cart ratio;  payload/railcart ratio
 
 
         // friction coefficient for Steel-Steel (depends highly on type of steel)
         // https://hypertextbook.com/facts/2005/steel.shtml
         double μStaticDrySteel  = 0.7; // static coeff, dry surface
-        double μKineticDrySteel = 0.6; // kinetic coeff, dry surface
+        double μKineticDrySteel = 0.5; // kinetic coeff, dry surface
 
         // simulation time sink for running correct number of iterations every update
         double SimulationTime = 0.0;
@@ -138,7 +187,7 @@ namespace crane3d
          * @param Fwind force winding the lift-line (Fr)
          * @return New state of the crane model
          */
-        ModelState UpdateFixed(double fixedTime, double deltaTime, double Frail, double Fcart, double Fwind);
+        ModelState UpdateFixed(double fixedTime, double deltaTime, Force Frail, Force Fcart, Force Fwind);
 
         /**
          * Updates the model using deltaTime as the time step. This can be unstable if deltaTime varies.
@@ -148,7 +197,7 @@ namespace crane3d
          * @param Fwind force winding the lift-line (Fr)
          * @return New state of the crane model
          */
-        ModelState Update(double deltaTime, double Frail, double Fcart, double Fwind);
+        ModelState Update(double deltaTime, Force Frail, Force Fcart, Force Fwind);
 
         /**
          * @return Current state of the crane:
@@ -158,20 +207,24 @@ namespace crane3d
 
     private:
 
-        double GetAccel(double Fapplied, double mass, double currentVel) const;
+        /**
+         * Calculates total friction force currently 
+         * 
+         */
+        Force ApplyFriction(Force Fapplied, double velocity, Mass m, double μStatic, double μKinetic) const;
 
-        void PrepareBasicRelations(double Frail, double Fcart, double Fwind);
+        void PrepareBasicRelations(Force Frail, Force Fcart, Force Fwind);
         
         // ------------------
         
-        void BasicLinearModel(double dt, double Frail, double Fcart);
-        void BasicLinearModel2(double dt, double Frail, double Fcart);
+        void BasicLinearModel(double dt, Force Frail, Force Fcart);
+        void BasicLinearModel2(double dt, Force Frail, Force Fcart);
 
         // ------------------
 
-        void NonLinearConstantPendulum(double dt, double Frail, double Fcart);
-        void NonLinearCompleteModel(double dt, double Frail, double Fcart, double Fwind);
-        void NonLinearOriginalModel(double dt, double Frail, double Fcart, double Fwind);
+        void NonLinearConstantPendulum(double dt, Force Frail, Force Fcart);
+        void NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind);
+        void NonLinearOriginalModel(double dt, Force Frail, Force Fcart, Force Fwind);
 
         // ------------------
 

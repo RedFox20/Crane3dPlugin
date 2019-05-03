@@ -11,12 +11,9 @@ namespace crane3d
     static constexpr double _PI = 3.14159265358979323846;
     static constexpr double _90degs = (_PI / 2);
 
-    constexpr double sign(double x)
-    {
-        if (x > 0) return +1.0;
-        if (x < 0) return -1.0;
-        return 0.0;
-    }
+    const Force Force::Zero { 0.0 };
+    const Mass  Mass::Zero  { 0.0 };
+    const Accel Accel::Zero { 0.0 };
 
     //////////////////////////////////////////////////////////////////////
     
@@ -76,7 +73,7 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
-    ModelState Model::UpdateFixed(double fixedTime, double deltaTime, double Frail, double Fcart, double Fwind)
+    ModelState Model::UpdateFixed(double fixedTime, double deltaTime, Force Frail, Force Fcart, Force Fwind)
     {
         // we run the simulation with a constant time step
         SimulationTime += deltaTime;
@@ -92,7 +89,7 @@ namespace crane3d
         return GetState();
     }
 
-    ModelState Model::Update(double deltaTime, double Frail, double Fcart, double Fwind)
+    ModelState Model::Update(double deltaTime, Force Frail, Force Fcart, Force Fwind)
     {
         switch (Type)
         {
@@ -125,25 +122,9 @@ namespace crane3d
     // `drivingAccel` must overcome `frictionAccel` in order to have an effect.
     double ApplyStaticFriction(double drivingAccel, double frictionAccel)
     {
-        if (abs(drivingAccel) <= abs(frictionAccel))
+        if (std::abs(drivingAccel) <= std::abs(frictionAccel))
             return 0.0;
-        return sign(drivingAccel) * (abs(drivingAccel) - abs(frictionAccel));
-    }
-
-    /**
-     * Calculates net acceleration from multiple acceleration and velocity forces
-     * @param inputAccel Accel. force put into the system
-     * @param frictionAccel Counteracting MAX static friction accel.
-     * @param currentVel Current velocity
-     */
-    double GetNetAccel(double inputAccel, double frictionAccel, double currentVel)
-    {
-        double a = abs(inputAccel);
-        double f = abs(frictionAccel);
-        double staticFr = f / 10.0;
-        if (a <= staticFr)
-            return 0.0;
-        return sign(inputAccel) * (a - staticFr);
+        return sign(drivingAccel) * (std::abs(drivingAccel) - std::abs(frictionAccel));
     }
 
     double SlidingAccel(double Fapplied, double μSlide, double g, double mass)
@@ -151,27 +132,33 @@ namespace crane3d
         return (Fapplied - μSlide * mass * g) / mass;
     }
 
-    double Model::GetAccel(double Fapplied, double mass, double currentVel) const
+    Force Model::ApplyFriction(Force Fapplied, double velocity, Mass m, double μStatic, double μKinetic) const
     {
-        double μ = abs(currentVel) > 0.1 ? μKineticDrySteel : μStaticDrySteel;
-        double Ffriction = μ * mass * G;
-        double F = abs(Fapplied);
-        if (F <= Ffriction)
-            return 0.0;
-        return sign(Fapplied) * (F - Ffriction) / mass;
+        Force Fnormal = m*g;
+        Force FstaticMax = μStatic * Fnormal;
+        Force Fkinetic = μKinetic * Fnormal;
+        if (std::abs(velocity) > 0.001)
+        {
+            return Fapplied - sign(velocity) * Fkinetic;
+        }
+        else
+        {
+            return {};
+        }
+        return Force();
     }
 
-    void Model::PrepareBasicRelations(double Frail, double Fcart, double Fwind)
+    void Model::PrepareBasicRelations(Force Frail, Force Fcart, Force Fwind)
     {
         // prepare basic relations
         // we recalculate every frame to allow dynamically changing the model parameters
-        u1 = Fcart / Mcart;              // u1 = Fy / Mw        | cart accel
-        u2 = Frail / (Mcart + Mpayload); // u2 = Fx / (Mw + Mc) | rail accel
-        u3 = Fwind / Mpayload;           // u3 = Fr / Mc        | line accel
+        u1 = Fcart.Value / Mcart.Value;              // u1 = Fy / Mw        | cart accel
+        u2 = Frail.Value / (Mcart + Mpayload).Value; // u2 = Fx / (Mw + Mc) | rail accel
+        u3 = Fwind.Value / Mpayload.Value;           // u3 = Fr / Mc        | line accel
 
-        T1 = CartFriction / Mcart;              // T1 = Ty / Mw        | cart friction accel
-        T2 = RailFriction / (Mcart + Mpayload); // T2 = Tx / (Mw + Mc) | rail friction accel
-        T3 = WindingFriction / Mpayload;        // T3 = Tr / Mc        | line winding friction accel
+        T1 = CartFriction / Mcart.Value;              // T1 = Ty / Mw        | cart friction accel
+        T2 = RailFriction / (Mcart + Mpayload).Value; // T2 = Tx / (Mw + Mc) | rail friction accel
+        T3 = WindingFriction / Mpayload.Value;        // T3 = Tr / Mc        | line winding friction accel
 
         N1 = ApplyStaticFriction(u1, T1); // cart net accel
         N2 = ApplyStaticFriction(u2, T2); // rail net accel
@@ -181,32 +168,39 @@ namespace crane3d
         μ1 = Mpayload / Mcart;           // μ1 = Mc / Mw
         μ2 = Mpayload / (Mcart + Mrail); // μ2 = Mc / (Mw + Ms)
 
-        ADrcart = Fcart / Mcart;              // u1 = Fy / Mw        | cart driving accel
-        ADrrail = Frail / (Mcart + Mpayload); // u2 = Fx / (Mw + Mc) | rail driving accel
-        ADrwind = Fwind / Mpayload;           // u3 = Fr / Mc        | wind driving accel
+        ADrcart = Fcart.Value / Mcart.Value;              // u1 = Fy / Mw        | cart driving accel
+        ADrrail = Frail.Value / (Mcart + Mpayload).Value; // u2 = Fx / (Mw + Mc) | rail driving accel
+        ADrwind = Fwind.Value / Mpayload.Value;           // u3 = Fr / Mc        | wind driving accel
 
-        AFrcart = CartFriction / Mcart;              // T1 = Ty / Mw        | cart friction accel
-        AFrrail = RailFriction / (Mcart + Mpayload); // T2 = Tx / (Mw + Mc) | rail friction accel
-        AFrwind = WindingFriction / Mpayload;        // T3 = Tr / Mc        | line winding friction accel
+        AFrcart = CartFriction / Mcart.Value;              // T1 = Ty / Mw        | cart friction accel
+        AFrrail = RailFriction / (Mcart + Mpayload).Value; // T2 = Tx / (Mw + Mc) | rail friction accel
+        AFrwind = WindingFriction / Mpayload.Value;        // T3 = Tr / Mc        | line winding friction accel
 
-        ANetcart = GetAccel(Fcart, Mcart + Mpayload, Y_vel);
-        ANetrail = GetAccel(Frail, AFrrail + Mcart + Mpayload, X_vel);
-        ANetwind = GetAccel(Fwind, Mpayload, R_vel);
+        // New
+        Mass Mcartpayload = Mcart+Mpayload;
+        Mass Mall = Mrail+Mcart+Mpayload;
+        Force FnetCart = ApplyFriction(Fcart, Y_vel, Mcartpayload, μStaticDrySteel, μKineticDrySteel);
+        Force FnetRail = ApplyFriction(Frail, X_vel, Mall,         μStaticDrySteel, μKineticDrySteel);
+        Force FnetWind = ApplyFriction(Fwind, R_vel, Mpayload,     μStaticDrySteel, μKineticDrySteel);
+
+        ANetcart = FnetCart / Mcartpayload;
+        ANetrail = FnetRail / Mall;
+        ANetwind = FnetWind / Mpayload;
     }
 
     //////////////////////////////////////////////////////////////////////
 
     // This simplified model assumes that α and β are very small
-    void Model::BasicLinearModel(double dt, double Frail, double Fcart)
+    void Model::BasicLinearModel(double dt, Force Frail, Force Fcart)
     {
-        PrepareBasicRelations(Frail, Fcart, 0.0);
+        PrepareBasicRelations(Frail, Fcart, Force::Zero);
 
         // calculate accelerations:
-        double aY = ANetcart - μ1 * Δα * ANetwind;
-        double aX = ANetrail + μ2 * Δβ * ANetwind;
-        double aΔα = +(aY - G*Δα - 2*Δα_vel*R_vel) / R;
-        double aΔβ = -(aX + G*Δβ + 2*Δβ_vel*R_vel) / R;
-        double aR  = -ANetwind + G;
+        Accel aY = ANetcart - μ1 * Δα * ANetwind;
+        Accel aX = ANetrail + μ2 * Δβ * ANetwind;
+        Accel aΔα =  (aY - g*Δα - 2*Δα_vel*R_vel) / R;
+        Accel aΔβ = -(aX + g*Δβ + 2*Δβ_vel*R_vel) / R;
+        Accel aR  = g - ANetwind;
         
         // OUTPUT: apply current velocity
         Y += dt * Y_vel;
@@ -216,26 +210,26 @@ namespace crane3d
         Δβ += dt * Δβ_vel;
 
         // compute next velocities  v = v0 + a * Δt
-        Y_vel += dt * aY;
-        X_vel += dt * aX;
-        Δα_vel += dt * aΔα;
-        Δβ_vel += dt * aΔβ;
-        R_vel  += dt * aR;
+        Y_vel  = integrate_velocity(Y_vel,  aY,  dt);
+        X_vel  = integrate_velocity(X_vel,  aX,  dt);
+        Δα_vel = integrate_velocity(Δα_vel, aΔα, dt);
+        Δβ_vel = integrate_velocity(Δβ_vel, aΔβ, dt);
+        R_vel  = integrate_velocity(R_vel,  aR,  dt);
     }
     
     //////////////////////////////////////////////////////////////////////
 
     // This simplified model assumes that α and β are very small
-    void Model::BasicLinearModel2(double dt, double Frail, double Fcart)
+    void Model::BasicLinearModel2(double dt, Force Frail, Force Fcart)
     {
-        PrepareBasicRelations(Frail, Fcart, 0.0);
+        PrepareBasicRelations(Frail, Fcart, Force::Zero);
 
         // calculate accelerations:
-        double aY = ANetcart - μ1 * Δα * ANetwind;
-        double aX = ANetrail + μ2 * Δβ * ANetwind;
-        double aΔα = +(aY - G*Δα - 2*Δα_vel*R_vel) / R;
-        double aΔβ = -(aX + G*Δβ + 2*Δβ_vel*R_vel) / R;
-        double aR  = -ANetwind + G;
+        Accel aY = ANetcart - μ1 * Δα * ANetwind;
+        Accel aX = ANetrail + μ2 * Δβ * ANetwind;
+        Accel aΔα =  (aY - g*Δα - 2*Δα_vel*R_vel) / R;
+        Accel aΔβ = -(aX + g*Δβ + 2*Δβ_vel*R_vel) / R;
+        Accel aR  = g - ANetwind;
         
         // OUTPUT: apply current velocity
         Y += dt * Y_vel;
@@ -245,18 +239,18 @@ namespace crane3d
         Δβ += dt * Δβ_vel;
 
         // compute next velocities  v = v0 + a * Δt
-        Y_vel += dt * aY;
-        X_vel += dt * aX;
-        Δα_vel += dt * aΔα;
-        Δβ_vel += dt * aΔβ;
-        R_vel  += dt * aR;
+        Y_vel  = integrate_velocity(Y_vel,  aY,  dt);
+        X_vel  = integrate_velocity(X_vel,  aX,  dt);
+        Δα_vel = integrate_velocity(Δα_vel, aΔα, dt);
+        Δβ_vel = integrate_velocity(Δβ_vel, aΔβ, dt);
+        R_vel  = integrate_velocity(R_vel,  aR,  dt);
     }
 
     //////////////////////////////////////////////////////////////////////
 
-    void Model::NonLinearConstantPendulum(double dt, double Frail, double Fcart)
+    void Model::NonLinearConstantPendulum(double dt, Force Frail, Force Fcart)
     {
-        PrepareBasicRelations(Frail, Fcart, 0.0);
+        PrepareBasicRelations(Frail, Fcart, Force::Zero);
 
         double sA = sin(Alfa); double sB = sin(Beta);
         double cA = cos(Alfa); double cB = cos(Beta);
@@ -287,7 +281,7 @@ namespace crane3d
     
     //////////////////////////////////////////////////////////////////////
 
-    void Model::NonLinearCompleteModel(double dt, double Frail, double Fcart, double Fwind)
+    void Model::NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
         double sA = sin(Alfa);
         double sB = sin(Beta);
@@ -320,7 +314,7 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
-    void Model::NonLinearOriginalModel(double dt, double Frail, double Fcart, double Fwind)
+    void Model::NonLinearOriginalModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
         PrepareBasicRelations(Frail, Fcart, Fwind);
 
@@ -335,9 +329,9 @@ namespace crane3d
         double V6 = 2 * Beta_vel*(cA*Alfa_vel*R + sA * R_vel) + G * sB;
         double V7 = sA2*βv2*R + G * sA*cB + Alfa_vel * Alfa_vel*R;
 
-        double Tsx = 5 / (Mcart + Mrail); // 1.490
-        double Tsy = 7.5 / Mcart; // 6.493
-        double Tsz = 10 / Mpayload; // 10
+        double Tsx = 5 / (Mcart + Mrail).Value; // 1.490
+        double Tsy = 7.5 / Mcart.Value; // 6.493
+        double Tsz = 10 / Mpayload.Value; // 10
 
         double aWind = -(R_vel * AFrwind + Tsz * sign(R_vel)); // NET winding accel
         double cartFr = (Y_vel * AFrcart + Tsy * sign(Y_vel)); // some sort of cart friction accel
@@ -382,7 +376,7 @@ namespace crane3d
     // dampen values that are very close to 0.0
     constexpr double Dampen(double x)
     {
-        return abs(x) < 0.0000001 ? 0.0 : x;
+        return std::abs(x) < 0.0000001 ? 0.0 : x;
     }
 
     constexpr double clamp(double x, double min, double max)
