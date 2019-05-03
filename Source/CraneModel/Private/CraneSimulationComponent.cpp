@@ -8,6 +8,17 @@ UCraneSimulationComponent::UCraneSimulationComponent()
     PrimaryComponentTick.bCanEverTick = true;
 }
 
+void UCraneSimulationComponent::SetCraneComponents(USceneComponent* center,
+                                                   USceneComponent* rail,
+                                                   USceneComponent* cart,
+                                                   USceneComponent* payload)
+{
+    CenterComponent = center;
+    RailComponent = rail;
+    CartComponent = cart;
+    PayloadComponent = payload;
+}
+
 void UCraneSimulationComponent::AddRailX(float axisValue, float multiplier)
 {
     ForceRail = axisValue * multiplier;
@@ -40,23 +51,19 @@ void UCraneSimulationComponent::BeginPlay()
 
 void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::ModelState& state)
 {
-    RailOffset = state.RailOffset;
-    CartOffset = state.CartOffset;
-    PayloadPosition = FVector{ (float)state.PayloadX, (float)state.PayloadY, (float)state.PayloadZ };
-
-    GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Red, FString::Printf(L"RailOffset: %.2f", RailOffset));
-    GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Red, FString::Printf(L"CartOffset: %.2f", CartOffset));
-    GEngine->AddOnScreenDebugMessage(3, 5.0f, FColor::Red, FString::Printf(L"PayloadPos: x:%.2f y:%.2f z:%2.f", PayloadPosition.X, PayloadPosition.Y, PayloadPosition.Z));
-    GEngine->AddOnScreenDebugMessage(4, 5.0f, FColor::Red, FString::Printf(L"Alfa: %.2f", state.Alfa));
-    GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Red, FString::Printf(L"Beta: %.2f", state.Beta));
-    GEngine->AddOnScreenDebugMessage(6, 5.0f, FColor::Red, FString::Printf(L"Line: %.2f", state.LiftLine));
-
-    GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Red, FString::Printf(L"Fcart: %.2f", ForceCart));
-    GEngine->AddOnScreenDebugMessage(8, 5.0f, FColor::Red, FString::Printf(L"Frail: %.2f", ForceRail));
-    GEngine->AddOnScreenDebugMessage(9, 5.0f, FColor::Red, FString::Printf(L"Fwind: %.2f", ForceWinding));
-
-    const UEnum* modelTypes = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECraneModelType"));
-    GEngine->AddOnScreenDebugMessage(10, 5.0f, FColor::Red, modelTypes->GetNameStringByIndex(static_cast<int>(ModelType)) );
+    // UE4 is in centimeters, crane model is in meters
+    RailOffset = (float)(state.RailOffset * 100);
+    CartOffset = (float)(state.CartOffset * 100);
+    PayloadPosition = FVector{
+        (float)(state.PayloadX * 100),
+        (float)(state.PayloadY * 100),
+        (float)(state.PayloadZ * 100)
+    };
+    auto text = Model->GetStateDebugText();
+    GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Red, FString::Printf(L"Frail: %.2f N", ForceRail));
+    GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Red, FString::Printf(L"Fcart: %.2f N", ForceCart));
+    GEngine->AddOnScreenDebugMessage(3, 5.0f, FColor::Red, FString::Printf(L"Fwndg: %.2f N", ForceWinding));
+    GEngine->AddOnScreenDebugMessage(4, 5.0f, FColor::Red, FString{text.c_str()});
 }
 
 void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -64,8 +71,9 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     // update model with parameters
+    // we do this every frame to allow full dynamic tweaking of
+    // the crane while the game is running
     Model->Type = static_cast<crane3d::ModelType>(ModelType);
-
     Model->Mrail = crane3d::Mass{RailMass};
     Model->Mcart = crane3d::Mass{CartMass};
     Model->Mpayload = crane3d::Mass{PayloadMass};
@@ -76,12 +84,12 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Model->CartFriction = CartFriction;
     Model->WindingFriction = WindingFriction;
 
-    Model->RailLimitMin = RailLimitMin;
-    Model->RailLimitMax = RailLimitMax;
-    Model->CartLimitMin = CartLimitMin;
-    Model->CartLimitMax = CartLimitMax;
-    Model->LineLimitMin = LineLimitMin;
-    Model->LineLimitMax = LineLimitMax;
+    Model->RailLimitMin = RailLimitMin / 100.0f;
+    Model->RailLimitMax = RailLimitMax / 100.0f;
+    Model->CartLimitMin = CartLimitMin / 100.0f;
+    Model->CartLimitMax = CartLimitMax / 100.0f;
+    Model->LineLimitMin = LineLimitMin / 100.0f;
+    Model->LineLimitMax = LineLimitMax / 100.0f;
 
     using crane3d::Force;
     crane3d::ModelState state = Model->Update(DeltaTime, Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
@@ -92,24 +100,31 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     ForceCart = 0.0;
     ForceWinding = 0.0;
 
-    if (RailComponent)
-        RailComponent->SetRelativeLocation(FVector{ RailOffset, 0, 0 });
-
-    if (CartComponent)
-        CartComponent->SetRelativeLocation(FVector{ RailOffset, CartOffset, 0 });
-
-    if (PayloadComponent)
-        PayloadComponent->SetRelativeLocation(PayloadPosition);
-
-    // DEBUG visualization
-    if (RailComponent && CartComponent && PayloadComponent)
+    if (CenterComponent)
     {
-        FVector center = RailComponent->GetOwner()->GetActorLocation() + FVector{ 0, 0, 50 };
-        FVector cart = center + FVector{ RailOffset, CartOffset, CartComponent->GetComponentLocation().Z };
-        FVector payload = PayloadComponent->GetComponentLocation();
+        if (RailComponent)
+        {
+            FVector railPos = RailComponent->RelativeLocation;
+            railPos.X = RailOffset;
+            RailComponent->SetRelativeLocation(railPos);
+        }
 
-        UWorld* world = GetWorld();
-        DrawDebugLine(world, cart, payload, FColor(0, 0, 255), false, -1, 0, 2);
+        if (CartComponent)
+        {
+            FVector cartPos = RailComponent->RelativeLocation;
+            cartPos.X = RailOffset;
+            cartPos.Y = CartOffset;
+            CartComponent->SetRelativeLocation(cartPos);
+        }
+
+        if (PayloadComponent)
+        {
+            PayloadComponent->SetRelativeLocation(PayloadPosition);
+
+            // cable visualization (DEBUG)
+            DrawDebugLine(GetWorld(), CartComponent->GetComponentLocation(),
+                PayloadComponent->GetComponentLocation(), FColor(15, 15, 15), false, -1, 0, 2);
+        }
     }
 }
 
