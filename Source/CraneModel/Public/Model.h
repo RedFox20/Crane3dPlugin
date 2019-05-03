@@ -15,7 +15,7 @@ namespace crane3d
         Linear2,
         
         // Non-linear model with constant pendulum length with 2 control forces.
-        // LiftLine (Fline) is ignored
+        // LiftLine (Fwind) is ignored
         NonLinearConstantLine,
 
         // Non-linear fully dynamic model with all 3 forces
@@ -74,7 +74,7 @@ namespace crane3d
 
         double RailFriction = 100.0; // Tx rail friction
         double CartFriction = 82.0;  // Ty cart friction
-        double LineFriction = 75.0;  // Tr liftline friction 
+        double WindingFriction = 75.0;  // Tr liftline winding friction 
 
         // cart, rail, line limits
         double RailLimitMin = -30.0;
@@ -99,9 +99,9 @@ namespace crane3d
         double Δβ = 0.0, Δβ_vel = 0.0;
 
         // velocity time derivatives
-        double X_vel = 0.0;
-        double Y_vel = 0.0;
-        double R_vel = 0.0;
+        double X_vel = 0.0; // rail X velocity
+        double Y_vel = 0.0; // cart Y velocity
+        double R_vel = 0.0; // payload Z velocity
         double Alfa_vel = 0.0;
         double Beta_vel = 0.0;
 
@@ -115,6 +115,12 @@ namespace crane3d
         double ANetcart, ANetrail, ANetwind; // net accel of cart, rail, wind
         double μ1, μ2; // coefficient of friction: payload/cart ratio;  payload/railcart ratio
 
+
+        // friction coefficient for Steel-Steel (depends highly on type of steel)
+        // https://hypertextbook.com/facts/2005/steel.shtml
+        double μStaticDrySteel  = 0.7; // static coeff, dry surface
+        double μKineticDrySteel = 0.6; // kinetic coeff, dry surface
+
         // simulation time sink for running correct number of iterations every update
         double SimulationTime = 0.0;
         int SimulationCounter = 0; // for debugging
@@ -124,13 +130,25 @@ namespace crane3d
         Model();
 
         /**
+         * Updates the model using a fixed time step
+         * @param fixedTime Size of the fixed time step. For example 0.01
          * @param deltaTime Time since last update
          * @param Frail force driving the rail with cart (Fx)
          * @param Fcart force driving the cart along the rail (Fy)
-         * @param Fline force controlling the length of the lift-line (Fr)
+         * @param Fwind force winding the lift-line (Fr)
          * @return New state of the crane model
          */
-        ModelState Update(double deltaTime, double Frail, double Fcart, double Fline);
+        ModelState UpdateFixed(double fixedTime, double deltaTime, double Frail, double Fcart, double Fwind);
+
+        /**
+         * Updates the model using deltaTime as the time step. This can be unstable if deltaTime varies.
+         * @param deltaTime Time since last update
+         * @param Frail force driving the rail with cart (Fx)
+         * @param Fcart force driving the cart along the rail (Fy)
+         * @param Fwind force winding the lift-line (Fr)
+         * @return New state of the crane model
+         */
+        ModelState Update(double deltaTime, double Frail, double Fcart, double Fwind);
 
         /**
          * @return Current state of the crane:
@@ -140,7 +158,9 @@ namespace crane3d
 
     private:
 
-        void PrepareBasicRelations(double Frail, double Fcart, double Fline);
+        double GetAccel(double Fapplied, double mass, double currentVel) const;
+
+        void PrepareBasicRelations(double Frail, double Fcart, double Fwind);
         
         // ------------------
         
@@ -150,8 +170,8 @@ namespace crane3d
         // ------------------
 
         void NonLinearConstantPendulum(double dt, double Frail, double Fcart);
-        void NonLinearCompleteModel(double dt, double Frail, double Fcart, double Fline);
-        void NonLinearOriginalModel(double dt, double Frail, double Fcart, double Fline);
+        void NonLinearCompleteModel(double dt, double Frail, double Fcart, double Fwind);
+        void NonLinearOriginalModel(double dt, double Frail, double Fcart, double Fwind);
 
         // ------------------
 

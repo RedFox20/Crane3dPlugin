@@ -7,12 +7,12 @@ int main()
 
 	double Frail = 0.0; // force driving the rail
 	double Fcart = 0.0; // force along the rail
-	double Fline = 0.0; // force driving the cable
+	double Fwind = 0.0; // force winding the cable
 
 	Model model;
     model.Type = ModelType::Linear;
 
-	ModelState state = model.Update(1.0, Frail, Fcart, Fline);
+	ModelState state = model.UpdateFixed(0.01, 10.0, Frail, Fcart, Fwind);
 	state.Print();
 
 	system("pause");

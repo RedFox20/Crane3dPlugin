@@ -8,13 +8,14 @@ namespace crane3d
     //////////////////////////////////////////////////////////////////////
 
     // time between each discrete step of the simulation
-    static constexpr double SimulationStep = 0.001;
     static constexpr double _PI = 3.14159265358979323846;
     static constexpr double _90degs = (_PI / 2);
 
     constexpr double sign(double x)
     {
-        return x > 0 ? 1.0 : (x < 0 ? -1.0 : 0.0);
+        if (x > 0) return +1.0;
+        if (x < 0) return -1.0;
+        return 0.0;
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -75,37 +76,45 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
-    ModelState Model::Update(double deltaTime, double Frail, double Fcart, double Fline)
+    ModelState Model::UpdateFixed(double fixedTime, double deltaTime, double Frail, double Fcart, double Fwind)
     {
         // we run the simulation with a constant time step
         SimulationTime += deltaTime;
-        int iterations = static_cast<int>(SimulationTime / SimulationStep);
+        int iterations = static_cast<int>(SimulationTime / fixedTime);
         SimulationTime -= floor(SimulationTime);
 
         for (int i = 0; i < iterations; ++i)
         {
-            switch (Type)
-            {
-                case ModelType::Linear:
-                    BasicLinearModel(SimulationStep, Frail, Fcart);
-                    break;
-                case ModelType::Linear2:
-                    BasicLinearModel2(SimulationStep, Frail, Fcart);
-                    break;
-                case ModelType::NonLinearConstantLine:
-                    NonLinearConstantPendulum(SimulationStep, Frail, Fcart);
-                    break;
-                case ModelType::NonLinearComplete:
-                    NonLinearCompleteModel(SimulationStep, Frail, Fcart, Fline);
-                    break;
-                case ModelType::NonLinearOriginal:
-                    NonLinearOriginalModel(SimulationStep, Frail, Fcart, Fline);
-                    break;
-            }
-
-            ApplyLimits();
-            GetState().Print();
+            Update(fixedTime, Frail, Fcart, Fwind);
         }
+
+        // and finally, return the observable current state
+        return GetState();
+    }
+
+    ModelState Model::Update(double deltaTime, double Frail, double Fcart, double Fwind)
+    {
+        switch (Type)
+        {
+            case ModelType::Linear:
+                BasicLinearModel(deltaTime, Frail, Fcart);
+                break;
+            case ModelType::Linear2:
+                BasicLinearModel2(deltaTime, Frail, Fcart);
+                break;
+            case ModelType::NonLinearConstantLine:
+                NonLinearConstantPendulum(deltaTime, Frail, Fcart);
+                break;
+            case ModelType::NonLinearComplete:
+                NonLinearCompleteModel(deltaTime, Frail, Fcart, Fwind);
+                break;
+            case ModelType::NonLinearOriginal:
+                NonLinearOriginalModel(deltaTime, Frail, Fcart, Fwind);
+                break;
+        }
+
+        ApplyLimits();
+        GetState().Print();
 
         // and finally, return the observable current state
         return GetState();
@@ -129,40 +138,60 @@ namespace crane3d
      */
     double GetNetAccel(double inputAccel, double frictionAccel, double currentVel)
     {
-        return inputAccel - currentVel * frictionAccel - (frictionAccel*0.1)*sign(currentVel);
+        double a = abs(inputAccel);
+        double f = abs(frictionAccel);
+        double staticFr = f / 10.0;
+        if (a <= staticFr)
+            return 0.0;
+        return sign(inputAccel) * (a - staticFr);
     }
 
-    void Model::PrepareBasicRelations(double Frail, double Fcart, double Fline)
+    double SlidingAccel(double Fapplied, double μSlide, double g, double mass)
+    {
+        return (Fapplied - μSlide * mass * g) / mass;
+    }
+
+    double Model::GetAccel(double Fapplied, double mass, double currentVel) const
+    {
+        double μ = abs(currentVel) > 0.1 ? μKineticDrySteel : μStaticDrySteel;
+        double Ffriction = μ * mass * G;
+        double F = abs(Fapplied);
+        if (F <= Ffriction)
+            return 0.0;
+        return sign(Fapplied) * (F - Ffriction) / mass;
+    }
+
+    void Model::PrepareBasicRelations(double Frail, double Fcart, double Fwind)
     {
         // prepare basic relations
         // we recalculate every frame to allow dynamically changing the model parameters
-        u1 = Fcart / Mcart;              // u1 = Fy / Mw        | cart acceleration force
-        u2 = Frail / (Mcart + Mpayload); // u2 = Fx / (Mw + Mc) | rail acceleration force
-        u3 = Fline / Mpayload;           // u3 = Fr / Mc        | line acceleration force
+        u1 = Fcart / Mcart;              // u1 = Fy / Mw        | cart accel
+        u2 = Frail / (Mcart + Mpayload); // u2 = Fx / (Mw + Mc) | rail accel
+        u3 = Fwind / Mpayload;           // u3 = Fr / Mc        | line accel
 
-        T1 = CartFriction / Mcart;              // T1 = Ty / Mw        | cart friction acceleration force
-        T2 = RailFriction / (Mcart + Mpayload); // T2 = Tx / (Mw + Mc) | rail friction acceleration force
-        T3 = LineFriction / Mpayload;           // T3 = Tr / Mc        | line friction acceleration force
-        
-        // friction coefficients:
+        T1 = CartFriction / Mcart;              // T1 = Ty / Mw        | cart friction accel
+        T2 = RailFriction / (Mcart + Mpayload); // T2 = Tx / (Mw + Mc) | rail friction accel
+        T3 = WindingFriction / Mpayload;        // T3 = Tr / Mc        | line winding friction accel
+
+        N1 = ApplyStaticFriction(u1, T1); // cart net accel
+        N2 = ApplyStaticFriction(u2, T2); // rail net accel
+        N3 = ApplyStaticFriction(u3, T3); // line net accel
+                
+        // these are cable driven friction coefficients:
         μ1 = Mpayload / Mcart;           // μ1 = Mc / Mw
         μ2 = Mpayload / (Mcart + Mrail); // μ2 = Mc / (Mw + Ms)
 
-        N1 = ApplyStaticFriction(u1, T1); // cart net acceleration force
-        N2 = ApplyStaticFriction(u2, T2); // rail net acceleration force
-        N3 = ApplyStaticFriction(u3, T3); // line net acceleration force
-
         ADrcart = Fcart / Mcart;              // u1 = Fy / Mw        | cart driving accel
         ADrrail = Frail / (Mcart + Mpayload); // u2 = Fx / (Mw + Mc) | rail driving accel
-        ADrwind = Fline / Mpayload;           // u3 = Fr / Mc        | wind driving accel
+        ADrwind = Fwind / Mpayload;           // u3 = Fr / Mc        | wind driving accel
 
         AFrcart = CartFriction / Mcart;              // T1 = Ty / Mw        | cart friction accel
         AFrrail = RailFriction / (Mcart + Mpayload); // T2 = Tx / (Mw + Mc) | rail friction accel
-        AFrwind = LineFriction / Mpayload;           // T3 = Tr / Mc        | line friction accel
+        AFrwind = WindingFriction / Mpayload;        // T3 = Tr / Mc        | line winding friction accel
 
-        ANetcart = GetNetAccel(ADrcart, AFrcart, X_vel);
-        ANetrail = GetNetAccel(ADrrail, AFrrail, Y_vel);
-        ANetwind = GetNetAccel(ADrwind, AFrwind, R_vel);
+        ANetcart = GetAccel(Fcart, Mcart + Mpayload, Y_vel);
+        ANetrail = GetAccel(Frail, AFrrail + Mcart + Mpayload, X_vel);
+        ANetwind = GetAccel(Fwind, Mpayload, R_vel);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -197,7 +226,7 @@ namespace crane3d
     //////////////////////////////////////////////////////////////////////
 
     // This simplified model assumes that α and β are very small
-    void Model::BasicLinearModel(double dt, double Frail, double Fcart)
+    void Model::BasicLinearModel2(double dt, double Frail, double Fcart)
     {
         PrepareBasicRelations(Frail, Fcart, 0.0);
 
@@ -258,13 +287,13 @@ namespace crane3d
     
     //////////////////////////////////////////////////////////////////////
 
-    void Model::NonLinearCompleteModel(double dt, double Frail, double Fcart, double Fline)
+    void Model::NonLinearCompleteModel(double dt, double Frail, double Fcart, double Fwind)
     {
         double sA = sin(Alfa);
         double sB = sin(Beta);
         double cA = cos(Alfa);
         double cB = cos(Beta);
-        PrepareBasicRelations(Frail, Fcart, Fline);
+        PrepareBasicRelations(Frail, Fcart, Fwind);
 
         double V5 = cA * sA*Beta_vel*Beta_vel*R - 2*R_vel*Alfa_vel + G * cA*cB;
         double V6 = 2 * Beta_vel*(cA*Alfa_vel*R + sA * R_vel) + G * sB;
@@ -291,9 +320,9 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
-    void Model::NonLinearOriginalModel(double dt, double Frail, double Fcart, double Fline)
+    void Model::NonLinearOriginalModel(double dt, double Frail, double Fcart, double Fwind)
     {
-        PrepareBasicRelations(Frail, Fcart, Fline);
+        PrepareBasicRelations(Frail, Fcart, Fwind);
 
         double sA = sin(Alfa); double sB = sin(Beta);
         double cA = cos(Alfa); double cB = cos(Beta);

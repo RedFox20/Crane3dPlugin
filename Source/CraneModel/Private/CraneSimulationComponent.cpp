@@ -18,9 +18,16 @@ void UCraneSimulationComponent::AddCartY(float axisValue, float multiplier)
     ForceCart = axisValue * multiplier;
 }
 
-void UCraneSimulationComponent::AddLineZ(float axisValue, float multiplier)
+void UCraneSimulationComponent::AddWindingZ(float axisValue, float multiplier)
 {
-    ForceCable = axisValue * multiplier;
+    ForceWinding = axisValue * multiplier;
+}
+
+void UCraneSimulationComponent::NextModelType()
+{
+    int next = (int)ModelType + 1;
+    if (next > (int)ECraneModelType::NonLinearOriginal) next = 0;
+    ModelType = (ECraneModelType)next;
 }
 
 void UCraneSimulationComponent::BeginPlay()
@@ -46,7 +53,10 @@ void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::ModelState& s
 
     GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Red, FString::Printf(L"Fcart: %.2f", ForceCart));
     GEngine->AddOnScreenDebugMessage(8, 5.0f, FColor::Red, FString::Printf(L"Frail: %.2f", ForceRail));
-    GEngine->AddOnScreenDebugMessage(9, 5.0f, FColor::Red, FString::Printf(L"Fcabl: %.2f", ForceCable));
+    GEngine->AddOnScreenDebugMessage(9, 5.0f, FColor::Red, FString::Printf(L"Fwind: %.2f", ForceWinding));
+
+    const UEnum* modelTypes = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECraneModelType"));
+    GEngine->AddOnScreenDebugMessage(10, 5.0f, FColor::Red, modelTypes->GetNameStringByIndex(static_cast<int>(ModelType)) );
 }
 
 void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -54,7 +64,7 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     // update model with parameters
-    Model->Type = (crane3d::ModelType)ModelType;
+    Model->Type = static_cast<crane3d::ModelType>(ModelType);
 
     Model->Mrail = RailMass;
     Model->Mcart = CartMass;
@@ -63,7 +73,7 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
     Model->RailFriction = RailFriction;
     Model->CartFriction = CartFriction;
-    Model->LineFriction = LineFriction;
+    Model->WindingFriction = WindingFriction;
 
     Model->RailLimitMin = RailLimitMin;
     Model->RailLimitMax = RailLimitMax;
@@ -72,13 +82,13 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Model->LineLimitMin = LineLimitMin;
     Model->LineLimitMax = LineLimitMax;
 
-    crane3d::ModelState state = Model->Update(DeltaTime, ForceRail, ForceCart, ForceCable);
+    crane3d::ModelState state = Model->Update(DeltaTime, ForceRail, ForceCart, ForceWinding);
     UpdateVisibleFields(state);
 
     // reset all forces for this frame
     ForceRail = 0.0;
     ForceCart = 0.0;
-    ForceCable = 0.0;
+    ForceWinding = 0.0;
 
     if (RailComponent)
         RailComponent->SetRelativeLocation(FVector{ RailOffset, 0, 0 });

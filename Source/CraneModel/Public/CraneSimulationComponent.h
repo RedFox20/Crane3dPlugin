@@ -49,7 +49,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Force Inputs")
     float ForceCart = 0;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Force Inputs")
-    float ForceCable = 0;
+    float ForceWinding = 0;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
     ECraneModelType ModelType = ECraneModelType::Linear;
@@ -68,7 +68,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
     float CartFriction = 82.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
-    float LineFriction = 75.0f;
+    float WindingFriction = 75.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
     float RailLimitMin = -30;
@@ -93,15 +93,22 @@ public:
     FVector PayloadPosition;
 
     UCraneSimulationComponent();
-
+    
+    // Adds force to the rail across the X axis
     UFUNCTION(BlueprintCallable, Category = "Crane Force Inputs")
     void AddRailX(float axisValue, float multiplier);
-
+    
+    // Adds force to the cart across the Y axis
     UFUNCTION(BlueprintCallable, Category = "Crane Force Inputs")
     void AddCartY(float axisValue, float multiplier);
-
+    
+    // Adds force to the winding mechanism across the Z axis
     UFUNCTION(BlueprintCallable, Category = "Crane Force Inputs")
-    void AddLineZ(float axisValue, float multiplier);
+    void AddWindingZ(float axisValue, float multiplier);
+
+    // Switches to the next simulation model
+    UFUNCTION(BlueprintCallable, Category = "Crane Misc. Inputs")
+    void NextModelType();
 
 protected:
     void BeginPlay() override;
