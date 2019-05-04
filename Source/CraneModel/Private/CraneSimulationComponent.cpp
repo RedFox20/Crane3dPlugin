@@ -123,7 +123,7 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
             // cable visualization (DEBUG)
             DrawDebugLine(GetWorld(), CartComponent->GetComponentLocation(),
-                PayloadComponent->GetComponentLocation(), FColor(15, 15, 15), false, -1, 0, 2);
+                PayloadComponent->GetComponentLocation(), FColor(15, 15, 15), false, -1, 0, 1);
         }
     }
 }

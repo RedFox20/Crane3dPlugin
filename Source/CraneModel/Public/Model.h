@@ -33,13 +33,15 @@ namespace crane3d
         static const Unit Zero;
         Unit operator+(Unit b) const { return { Value + b.Value }; }
         Unit operator-(Unit b) const { return { Value - b.Value }; }
+        bool operator>(Unit b) const { return Value > b.Value; }
         Unit operator+(double x) const { return { Value + x }; }
         Unit operator-(double x) const { return { Value - x }; }
         Unit operator*(double x) const { return { Value * x }; }
         Unit operator/(double x) const { return { Value / x }; }
+        bool operator>(double b) const { return Value > b; }
+        bool operator<(double b) const { return Value < b; }
         double operator/(Unit b) const { return Value / b.Value; }
         Unit operator-() const { return { -Value }; }
-        bool operator>(Unit b) const { return Value > b.Value; }
     };
     struct _Force {};
     struct _Mass  {};
@@ -72,10 +74,20 @@ namespace crane3d
     //////////////////////////////////////////////////////////////////////
 
     // compute new velocity:
-    // v = v0 + a * Δt
+    // v = v0 + a*Δt
     inline double integrate_velocity(double v0, Accel a, double Δt)
     {
-        return v0 + a.Value * Δt;
+        return v0 + a.Value*Δt;
+    }
+
+    // compute new position from v and a:
+    // Velocity Verlet integration
+    // x = x0 + (oldV + newV)*dt*0.5
+    inline double integrate_pos(double x0, double v, Accel a, double Δt)
+    {
+        double oldV = v;
+        double newV = v + a.Value*Δt;
+        return x0 + (oldV + newV)*Δt*0.5;
     }
 
     // avg velocity = (x2 - x1) / (t2 - t1)
@@ -179,8 +191,8 @@ namespace crane3d
 
         // friction coefficient for Steel-Steel (depends highly on type of steel)
         // https://hypertextbook.com/facts/2005/steel.shtml
-        double μStaticDrySteel  = 0.7; // static coeff, dry surface
-        double μKineticDrySteel = 0.6; // kinetic coeff, dry surface
+        double μStaticDrySteel  = 0.2; // static coeff, dry surface
+        double μKineticDrySteel = 0.2; // kinetic coeff, dry surface
 
         // simulation time sink for running correct number of iterations every update
         double SimulationTime = 0.0;
@@ -219,8 +231,6 @@ namespace crane3d
 
         std::wstring GetStateDebugText() const;
 
-        Force KineticFriction(double velocity, Mass m, double μKinetic) const;
-        Force StaticFriction(Force Fapplied, double velocity, Mass m, double μStatic) const;
         Force NetForce(Force Fapplied, double velocity, Mass m, double μStatic, double μKinetic) const;
 
     private:

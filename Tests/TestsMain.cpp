@@ -17,9 +17,31 @@ static void assert_expr(bool result, const char* expr, const char* message)
 }
 #define Assert(expr, message) assert_expr(expr, #expr, message)
 
+using namespace crane3d;
+
+void test_friction()
+{
+    Force push = 1_N;
+    double v = 0.0;
+    Mass m = 1_kg;
+    Accel a;
+    Force F;
+
+    Model model;
+
+    // push with 1000 frame/s precision
+    for (int i = 0; i < 1000; ++i)
+    {
+        F = model.NetForce(push, v, m, 0.5, 0.25);
+        v = integrate_velocity(v, F / m, 0.001);
+    }
+
+    v = v;
+}
+
 int main()
 {
-	using namespace crane3d;
+    test_friction();
 
     Force Frail { 50.0 }; // force driving the rail
     Force Fcart { 0.0 }; // force along the rail
@@ -27,9 +49,6 @@ int main()
 
 	Model model;
     model.Type = ModelType::Linear;
-
-    Force Fnet = model.NetForce(-1_N, -5.0, 1_kg, 0.5, 0.25);
-
 	ModelState state = model.UpdateFixed(0.01, 10.0, Frail, Fcart, Fwind);
 	state.Print();
 

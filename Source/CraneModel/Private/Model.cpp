@@ -23,6 +23,12 @@ namespace crane3d
         if (x >= max) return max;
         return x;
     }
+    
+    // dampen values that are very close to 0.0
+    constexpr double Dampen(double x)
+    {
+        return std::abs(x) < 0.0000001 ? 0.0 : x;
+    }
 
     //////////////////////////////////////////////////////////////////////
     
@@ -164,44 +170,37 @@ namespace crane3d
         return sign(drivingAccel) * (std::abs(drivingAccel) - std::abs(frictionAccel));
     }
 
-    Force Model::KineticFriction(double velocity, Mass m, double μKinetic) const
+    Force Model::NetForce(Force applied, double velocity, Mass m, double μStatic, double μKinetic) const
     {
-        double absVel = std::abs(velocity);
-        if (absVel >= 0.001) // moving
+        Force Fnormal = m*g; // normal force between body and surface
+        Force friction = Force::Zero;
+        if (std::abs(velocity) < 0.01)
         {
-            Force Fnormal = m*g; // normal force between body and surface
-            Force Fkinetic = μKinetic * Fnormal;
-            //if (absVel > Fkinetic)
-                return sign(velocity) * Fkinetic;
-            //else // vel <= Fk
-            //    return Force{ velocity };
+            Force staticMax = μStatic * Fnormal;
+            if (abs(applied) > staticMax) // resist up to max static friction
+                friction = sign(applied) * (abs(applied) - staticMax);
         }
-        return Force::Zero;
-    }
-
-    Force Model::StaticFriction(Force Fapplied, double velocity, Mass m, double μStatic) const
-    {
-        if (std::abs(velocity) < 0.001) // still
+        else
         {
-            Force Fnormal = m*g; // normal force between body and surface
-            Force FstaticMax = μStatic * Fnormal;
-            // resist force up to max static friction force
-            if (abs(Fapplied) > FstaticMax)
-            {
-                return sign(Fapplied) * (abs(Fapplied) - FstaticMax);
-            }
+            Force kinetic = μKinetic * Fnormal;
+            if (std::abs(velocity) > kinetic)
+                friction = sign(velocity) * kinetic;
+            else // vel <= Fk
+                friction = Force{velocity};
         }
-        return Force::Zero;
-    }
 
-    Force Model::NetForce(Force Fapplied, double velocity, Mass m, double μStatic, double μKinetic) const
-    {
-        Force Fstatic  = StaticFriction(Fapplied, velocity, m, μStatic);
-        Force Fkinetic = KineticFriction(velocity, m, μKinetic);
-        Force Fnet = Fapplied - (Fstatic + Fkinetic);
+        Force Fnet = applied - friction;
         // @note Fnet positive: driving dominates
         // @note Fnet negative: friction dominates
         return Fnet;
+    }
+
+    // if force would push X over limits, then force is 0
+    Force ClampForceByLimits(Force force, double x, double limitMin, double limitMax)
+    {
+        if (force > 0.0 && x >= limitMax) return Force::Zero;
+        if (force < 0.0 && x <= limitMin) return Force::Zero;
+        return force;
     }
 
     void Model::PrepareBasicRelations(Force Frail, Force Fcart, Force Fwind)
@@ -235,12 +234,17 @@ namespace crane3d
         // New friction model
         Mass Mcartpayload = Mcart+Mpayload;
         Mass Mall = Mrail+Mcart+Mpayload;
-        Force FnetCart = NetForce(Fcart, Y_vel, Mcartpayload, μStaticDrySteel, μKineticDrySteel);
+
         Force FnetRail = NetForce(Frail, X_vel, Mall,         μStaticDrySteel, μKineticDrySteel);
+        Force FnetCart = NetForce(Fcart, Y_vel, Mcartpayload, μStaticDrySteel, μKineticDrySteel);
         Force FnetWind = NetForce(Fwind, R_vel, Mpayload,     μStaticDrySteel, μKineticDrySteel);
 
-        ANetcart = FnetCart / Mcartpayload;
+        FnetRail = ClampForceByLimits(FnetRail, X, RailLimitMin, RailLimitMax);
+        FnetCart = ClampForceByLimits(FnetCart, Y, CartLimitMin, CartLimitMax);
+        FnetWind = ClampForceByLimits(FnetWind, R, LineLimitMin, LineLimitMax);
+
         ANetrail = FnetRail / Mall;
+        ANetcart = FnetCart / Mcartpayload;
         ANetwind = FnetWind / Mpayload;
     }
 
@@ -257,22 +261,21 @@ namespace crane3d
         Accel aΔα =  (aY - g*Δα - 2*Δα_vel*R_vel) / R;
         Accel aΔβ = -(aX + g*Δβ + 2*Δβ_vel*R_vel) / R;
         Accel aR  = g - ANetwind;
-        
-        // integrate force driven velocities
-        X_vel  = integrate_velocity(X_vel,  aX,  dt);
-        Y_vel  = integrate_velocity(Y_vel,  aY,  dt);
-        Δα_vel = integrate_velocity(Δα_vel, aΔα, dt);
-        Δβ_vel = integrate_velocity(Δβ_vel, aΔβ, dt);
-        R_vel  = integrate_velocity(R_vel,  aR,  dt);
 
         // derive new positions within limits
-        double X2  = clamp(X  + X_vel*dt,  RailLimitMin, RailLimitMax);
-        double Y2  = clamp(Y  + Y_vel*dt,  CartLimitMin, CartLimitMax);
-        double R2  = clamp(R  + R_vel*dt,  LineLimitMin, LineLimitMax);
-        double Δα2 = clamp(Δα + Δα_vel*dt, -0.2, +0.2);
-        double Δβ2 = clamp(Δβ + Δα_vel*dt, -0.2, +0.2);
+        double X2  = clamp(integrate_pos(X, X_vel, aX, dt),  RailLimitMin, RailLimitMax);
+        double Y2  = clamp(integrate_pos(Y, Y_vel, aY, dt),  CartLimitMin, CartLimitMax);
+        double R2  = clamp(integrate_pos(R, R_vel, aR, dt),  LineLimitMin, LineLimitMax);
+        double Δα2 = clamp(integrate_pos(Δα, Δα_vel, aΔα, dt), -0.05, +0.05);
+        double Δβ2 = clamp(integrate_pos(Δβ, Δβ_vel, aΔβ, dt), -0.05, +0.05);
 
-        // calculate ACTUAL average velocities (due to limits)
+        //X_vel  = integrate_velocity(X_vel, aX, dt);
+        //Y_vel  = integrate_velocity(Y_vel, aY, dt);
+        //R_vel  = integrate_velocity(R_vel, aR, dt);
+        //Δα_vel = integrate_velocity(Δα_vel, aΔα, dt);
+        //Δβ_vel = integrate_velocity(Δβ_vel, aΔβ, dt);
+
+        // get the average velocities (due to clamp limits)
         X_vel  = average_velocity(X, X2, dt);
         Y_vel  = average_velocity(Y, Y2, dt);
         R_vel  = average_velocity(R, R2, dt);
@@ -285,6 +288,17 @@ namespace crane3d
         //R = R2; // @todo keep this const in a better way
         Δα = Δα2;
         Δβ = Δβ2;
+
+        //Y = Dampen(Y);
+        //X = Dampen(X);
+        //R = Dampen(R);
+        //Δα = Dampen(Δα);
+        //Δβ = Dampen(Δβ);
+        //Y_vel  = Dampen(Y_vel);
+        //X_vel  = Dampen(X_vel);
+        //R_vel  = Dampen(R_vel);
+        //Δα_vel = Dampen(Δα_vel);
+        //Δβ_vel = Dampen(Δβ_vel);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -378,9 +392,13 @@ namespace crane3d
         double Tsy = 7.5 / Mcart.Value; // 6.493
         double Tsz = 10 / Mpayload.Value; // 10
 
-        double aWind = -(R_vel * AFrwind + Tsz * sign(R_vel)); // NET winding accel
-        double cartFr = (Y_vel * AFrcart + Tsy * sign(Y_vel)); // some sort of cart friction accel
+        AFrrail = RailFriction / (Mcart + Mpayload).Value; // T2 = Tx / (Mw + Mc) | rail friction accel
+        AFrcart = CartFriction / Mcart.Value;              // T1 = Ty / Mw        | cart friction accel
+        AFrwind = WindingFriction / Mpayload.Value;        // T3 = Tr / Mc        | line winding friction accel
+
         double railFr = (X_vel * AFrrail + Tsx * sign(X_vel)); // some sort of rail friction accel
+        double cartFr = (Y_vel * AFrcart + Tsy * sign(Y_vel)); // some sort of cart friction accel
+        double aWind = -(R_vel * AFrwind + Tsz * sign(R_vel)); // NET winding accel
 
         double aY = ADrcart - cartFr + μ1cA*u3 - μ1cA*aWind;
         double aX = ADrrail - railFr + μ2sAsB*u3 - μ2sAsB*aWind;
@@ -419,12 +437,6 @@ namespace crane3d
     }
 
     //////////////////////////////////////////////////////////////////////
-
-    // dampen values that are very close to 0.0
-    constexpr double Dampen(double x)
-    {
-        return std::abs(x) < 0.0000001 ? 0.0 : x;
-    }
 
     void Model::ApplyLimits()
     {
