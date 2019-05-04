@@ -27,7 +27,7 @@ namespace crane3d
     // dampen values that are very close to 0.0
     constexpr double Dampen(double x)
     {
-        return std::abs(x) < 0.0000001 ? 0.0 : x;
+        return std::abs(x) < 0.001 ? 0.0 : x;
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -111,9 +111,14 @@ namespace crane3d
             ss << L" vα " << Alfa_vel << L" m/s \n";
             ss << L" vβ " << Beta_vel << L" m/s \n";
         }
-        ss << L" ΣaCart " << ANetcart.Value << L" m/s² \n";
-        ss << L" ΣaRail " << ANetrail.Value << L" m/s² \n";
-        ss << L" ΣaWind " << ANetwind.Value << L" m/s² \n";
+        ss << L" a Cart " << ANetcart.Value << L" m/s² \n";
+        ss << L" a Rail " << ANetrail.Value << L" m/s² \n";
+        ss << L" a Wind " << ANetwind.Value << L" m/s² \n";
+        
+        ss << std::setw(2);
+        ss << L" F rail " << FnetRail.Value << L" := " << FappRail.Value << " " << FfriRail.Value << "\n";
+        ss << L" F cart " << FnetCart.Value << L" := " << FappCart.Value << " " << FfriCart.Value << "\n";
+        ss << L" F wind " << FnetWind.Value << L" := " << FappWind.Value << " " << FfriWind.Value << "\n";
         return ss.str();
     }
 
@@ -170,25 +175,26 @@ namespace crane3d
         return sign(drivingAccel) * (std::abs(drivingAccel) - std::abs(frictionAccel));
     }
 
-    Force Model::NetForce(Force applied, double velocity, Mass m, double μStatic, double μKinetic) const
+    Force Model::NetForce(Force applied, double velocity,
+        Mass m, double μStatic, double μKinetic, Force* outFriction) const
     {
         Force Fnormal = m*g; // normal force between body and surface
         Force friction = Force::Zero;
-        if (std::abs(velocity) < 0.01)
+        if (std::abs(velocity) < 0.001) // static friction
         {
             Force staticMax = μStatic * Fnormal;
             if (abs(applied) > staticMax) // resist up to max static friction
                 friction = sign(applied) * (abs(applied) - staticMax);
+            else
+                friction = applied; // cancel out applied force
         }
         else
         {
             Force kinetic = μKinetic * Fnormal;
-            if (std::abs(velocity) > kinetic)
-                friction = sign(velocity) * kinetic;
-            else // vel <= Fk
-                friction = Force{velocity};
+            friction = sign(velocity) * kinetic;
         }
 
+        *outFriction = friction;
         Force Fnet = applied - friction;
         // @note Fnet positive: driving dominates
         // @note Fnet negative: friction dominates
@@ -235,9 +241,12 @@ namespace crane3d
         Mass Mcartpayload = Mcart+Mpayload;
         Mass Mall = Mrail+Mcart+Mpayload;
 
-        Force FnetRail = NetForce(Frail, X_vel, Mall,         μStaticDrySteel, μKineticDrySteel);
-        Force FnetCart = NetForce(Fcart, Y_vel, Mcartpayload, μStaticDrySteel, μKineticDrySteel);
-        Force FnetWind = NetForce(Fwind, R_vel, Mpayload,     μStaticDrySteel, μKineticDrySteel);
+        FappRail = Frail;
+        FappCart = Fcart;
+        FappWind = Fwind;
+        FnetRail = NetForce(Frail, X_vel, Mall,         μStaticDrySteel, μKineticDrySteel, &FfriRail);
+        FnetCart = NetForce(Fcart, Y_vel, Mcartpayload, μStaticDrySteel, μKineticDrySteel, &FfriCart);
+        FnetWind = NetForce(Fwind, R_vel, Mpayload,     μStaticDrySteel, μKineticDrySteel, &FfriWind);
 
         FnetRail = ClampForceByLimits(FnetRail, X, RailLimitMin, RailLimitMax);
         FnetCart = ClampForceByLimits(FnetCart, Y, CartLimitMin, CartLimitMax);
@@ -289,16 +298,11 @@ namespace crane3d
         Δα = Δα2;
         Δβ = Δβ2;
 
-        //Y = Dampen(Y);
-        //X = Dampen(X);
-        //R = Dampen(R);
-        //Δα = Dampen(Δα);
-        //Δβ = Dampen(Δβ);
-        //Y_vel  = Dampen(Y_vel);
-        //X_vel  = Dampen(X_vel);
-        //R_vel  = Dampen(R_vel);
-        //Δα_vel = Dampen(Δα_vel);
-        //Δβ_vel = Dampen(Δβ_vel);
+        X_vel  = Dampen(X_vel);
+        Y_vel  = Dampen(Y_vel);
+        R_vel  = Dampen(R_vel);
+        Δα_vel = Dampen(Δα_vel);
+        Δβ_vel = Dampen(Δβ_vel);
     }
 
     //////////////////////////////////////////////////////////////////////

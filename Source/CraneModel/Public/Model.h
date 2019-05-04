@@ -189,10 +189,15 @@ namespace crane3d
         Accel ANetcart, ANetrail, ANetwind; // net accel of cart, rail, wind
         double μ1, μ2; // coefficient of friction: payload/cart ratio;  payload/railcart ratio
 
+        
+        Force FappRail, FappCart, FappWind;
+        Force FnetRail, FnetCart, FnetWind;
+        Force FfriRail, FfriCart, FfriWind;
+
         // friction coefficient for Steel-Steel (depends highly on type of steel)
         // https://hypertextbook.com/facts/2005/steel.shtml
-        double μStaticDrySteel  = 0.2; // static coeff, dry surface
-        double μKineticDrySteel = 0.2; // kinetic coeff, dry surface
+        double μStaticDrySteel  = 0.8; // static coeff, dry surface
+        double μKineticDrySteel = 0.7; // kinetic coeff, dry surface
 
         // simulation time sink for running correct number of iterations every update
         double SimulationTime = 0.0;
@@ -231,7 +236,8 @@ namespace crane3d
 
         std::wstring GetStateDebugText() const;
 
-        Force NetForce(Force Fapplied, double velocity, Mass m, double μStatic, double μKinetic) const;
+        Force NetForce(Force Fapplied, double velocity,
+            Mass m, double μStatic, double μKinetic, Force* outFriction) const;
 
     private:
 
