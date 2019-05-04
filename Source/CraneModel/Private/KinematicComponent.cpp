@@ -22,6 +22,13 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
+    void Component::Reset()
+    {
+        Pos = Vel = 0.0;
+        Acc = NetAcc = Accel::Zero;
+        Applied = Friction = Fnet = Force::Zero;
+    }
+
     void Component::Update(Accel new_acc, double dt)
     {
         double newPos = Pos + Vel * dt + Acc.Value*(dt*dt*0.5);

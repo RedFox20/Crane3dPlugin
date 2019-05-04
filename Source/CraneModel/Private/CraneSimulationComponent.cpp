@@ -73,11 +73,10 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     // update model with parameters
     // we do this every frame to allow full dynamic tweaking of
     // the crane while the game is running
-    Model->Type = static_cast<crane3d::ModelType>(ModelType);
+    Model->SetType(static_cast<crane3d::ModelType>(ModelType));
     Model->Mrail = crane3d::Mass{RailMass};
     Model->Mcart = crane3d::Mass{CartMass};
     Model->Mpayload = crane3d::Mass{PayloadMass};
-    Model->G = Gravity;
     Model->g = crane3d::Accel{Gravity};
 
     Model->RailFriction = RailFriction;
@@ -123,10 +122,11 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
             if (CartComponent)
             {
-                PayloadComponent->RelativeRotation = FRotator{FQuat::FindBetween(
-                    CartComponent->GetComponentLocation(),
-                    PayloadComponent->GetComponentLocation()
-                )};
+                FVector dir = CartComponent->GetComponentLocation() - PayloadComponent->GetComponentLocation();
+                dir.Normalize();
+                FRotator rot = dir.Rotation();
+                rot.Pitch -= 90;
+                PayloadComponent->RelativeRotation = rot;
             }
 
             // cable visualization (DEBUG)

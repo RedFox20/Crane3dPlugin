@@ -13,13 +13,12 @@ namespace crane3d
      */
     enum class ModelType
     {
-        // The most basic and foolproof crane model
+        // The most basic crane model with minimum pendulum movement
         Linear,
 
         // Non-linear model with constant pendulum length with 2 control forces.
         // LiftLine (Fwind) is ignored
         NonLinearConstLine,
-
 
         // Non-linear fully dynamic model with all 3 forces
         NonLinearComplete,
@@ -62,34 +61,31 @@ namespace crane3d
         /**
          * NOTE: These are the customization parameters of the model
          */
-        // Which model to use? Linear is simple and foolproof		
-        ModelType Type = ModelType::Linear;
         Mass Mpayload = 1.000_kg; // Mc mass of the payload
         Mass Mcart    = 1.155_kg; // Mw mass of the cart
         Mass Mrail    = 2.200_kg; // Ms mass of the moving rail
-        double G { 9.81 };  // gravity constant, 9.81m/s^2
         Accel g = 9.81_ms2; // gravity constant, 9.81m/s^2
 
         // Rail component
         //   describes distance of the rail with the cart from the center of the construction frame
-        Component Rail { -0.30, +0.30 };
+        Component Rail { 0.0, -0.30, +0.30 };
 
         // Cart component
         //   describes distance of the cart from the center of the rail;
-        Component Cart { -0.35, +0.35 };
+        Component Cart { 0.0, -0.35, +0.35 };
 
         // Line component
         //   describes the length of the lift-line
-        Component Line { +0.05, +0.90 };
+        Component Line { 0.5, +0.05, +0.90 };
 
         // Alfa component
         //   describes α angle between y axis (cart moving left-right) and the lift-line
-        Component Alfa { -0.05, +0.05 }; // Alfa component
+        Component Alfa { 0.0, -0.05, +0.05 }; // Alfa component
 
         // Beta component
         //   describes β angle between negative direction on the z axis and the projection
         //   of the lift-line onto the xz plane
-        Component Beta { -0.05, +0.05 };
+        Component Beta { 0.0, -0.05, +0.05 };
 
         double RailFriction = 100.0; // Tx rail friction
         double CartFriction = 82.0;  // Ty cart friction
@@ -97,25 +93,7 @@ namespace crane3d
 
     private:
 
-        //double X = 0.0; // distance of the rail with the cart from the center of the construction frame
-        //double Y = 0.0; // distance of the cart from the center of the rail;
-        //double R = 0.5; // length of the lift-line
-        //double Alfa = 0.0; // α angle between y axis (cart moving left-right) and the lift-line
-        //double Beta = 0.0; // β angle between negative direction on the z axis and the projection
-        //                   // of the lift-line onto the xz plane
-
-        //// velocity time derivatives
-        //double X_vel = 0.0; // rail X velocity
-        //double Y_vel = 0.0; // cart Y velocity
-        //double R_vel = 0.0; // payload Z velocity
-        //double Alfa_vel = 0.0;
-        //double Beta_vel = 0.0;
-
-        //// x1..x10 as per 3DCrane mathematical model description
-        //double CartNetAcc, RailNetAcc, WindNetAcc; // net acceleration of cart, rail, wind
-
-        //double ADrcart, ADrrail, ADrwind; // driving accel of cart, rail, wind
-        //double AFrcart, AFrrail, AFrwind; // T1,T2,T3 friction accel of cart, rail, wind
+        ModelType Type = ModelType::Linear;
         double μ1, μ2; // coefficient of friction: payload/cart ratio;  payload/railcart ratio
 
         // simulation time sink for running correct number of iterations every update
@@ -128,7 +106,19 @@ namespace crane3d
 
     public:
 
-        Model();
+        Model(ModelType type = ModelType::Linear);
+
+        /**
+         * Resets all simulation components. Does not modify customization parameters. 
+         */
+        void Reset();
+
+        /**
+         * Sets the simulation type and Resets the simulation if the type changed.
+         */
+        void SetType(ModelType type);
+        ModelType GetType() const { return Type; }
+
 
         /**
          * Updates the model using a fixed time step
@@ -160,7 +150,6 @@ namespace crane3d
         std::wstring GetStateDebugText() const;
 
     private:
-
 
         void PrepareBasicRelations(Force Frail, Force Fcart, Force Fwind);
         

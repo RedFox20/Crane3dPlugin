@@ -41,8 +41,7 @@ int main()
     Force Fcart { 0.0 }; // force along the rail
     Force Fwind { 0.0 }; // force winding the cable
 
-	Model model;
-    model.Type = ModelType::Linear;
+    Model model { ModelType::Linear };
 	ModelState state = model.UpdateFixed(0.01, 10.0, Frail, Fcart, Fwind);
 	state.Print();
 

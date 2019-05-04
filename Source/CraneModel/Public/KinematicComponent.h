@@ -13,9 +13,9 @@ namespace crane3d
     struct Component
     {
         Mass Mass = 1_kg;
+        double Pos = 0.0;
         double LimitMin = 0.0;
         double LimitMax = 0.0;
-        double Pos = 0.0;
         double Vel = 0.0;
         Accel Acc = 0_ms2; // actual acceleration
 
@@ -30,7 +30,13 @@ namespace crane3d
         double CoeffKinetic = 0.7; // kinetic coeff, dry surface
 
         Component() = default;
-        Component(double limitMin, double limitMax) : LimitMin{limitMin}, LimitMax{limitMax} {}
+        Component(double pos, double limitMin, double limitMax)
+            : Pos{pos}, LimitMin{limitMin}, LimitMax{limitMax} {}
+
+        void SetLimits(double min, double max) { LimitMin = min; LimitMax = max; }
+
+        // Resets all dynamic variables: Pos, Vel, Acc, Fnet, NetAcc
+        void Reset();
 
         // Update pos and vel using "Velocity Verlet" integration
         void Update(Accel new_acc, double dt);

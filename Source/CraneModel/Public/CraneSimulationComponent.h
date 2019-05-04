@@ -7,15 +7,15 @@
 #include <memory>
 #include "CraneSimulationComponent.generated.h"
 
+/**
+ * Type of crane simulation used by CraneSimulationComponent
+ */
 UENUM(BlueprintType)
 enum class ECraneModelType : uint8
 {
-    // The most basic and foolproof crane model
+    // The most basic crane model with minimum pendulum movement
     Linear,
         
-    // Variation of the first linear model
-    Linear2,
-
     // Non-linear model with constant pendulum length with 2 control forces.
     // LiftLine (Fline) is ignored
     NonLinearConstantLine,
@@ -27,7 +27,9 @@ enum class ECraneModelType : uint8
     NonLinearOriginal,
 };
 
-
+/**
+ * Adapts crane simulation and parameters as an actor component
+ */
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class CRANEMODEL_API UCraneSimulationComponent : public UActorComponent
 {
