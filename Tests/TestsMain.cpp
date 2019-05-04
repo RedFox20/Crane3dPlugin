@@ -28,15 +28,7 @@ void test_friction()
     Force F;
 
     Model model;
-
-    // push with 1000 frame/s precision
-    for (int i = 0; i < 1000; ++i)
-    {
-        F = model.NetForce(push, v, m, 0.5, 0.25);
-        v = integrate_velocity(v, F / m, 0.001);
-    }
-
-    v = v;
+    Force friction;
 }
 
 int main()

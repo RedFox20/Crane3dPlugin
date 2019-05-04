@@ -2,6 +2,7 @@
 #include "Model.h"
 #include <cmath>
 #include <cstdio>
+#include <cstdarg>
 #include <sstream> // std::stringstream
 #include <iomanip> // std::setprecision
 
@@ -44,21 +45,24 @@ namespace crane3d
     {
         // Restore the internal alfa representation
         ModelState s;
-        s.RailOffset = X;
-        s.CartOffset = Y;
-        s.LiftLine   = R;
 
         // Formulas given by 3DCrane mathematical model description
         if (Type == ModelType::Linear)
         {
-            s.Alfa = Δα;
-            s.Beta = Δβ;
-            s.PayloadX = X + R * Δβ;
-            s.PayloadY = Y - R * Δα;
-            s.PayloadZ = -R;
+            s.RailOffset = Rail.Pos;
+            s.CartOffset = Cart.Pos;
+            s.LiftLine   = Line.Pos;
+            s.Alfa = CAlfa.Pos;
+            s.Beta = CBeta.Pos;
+            s.PayloadX = s.RailOffset + s.LiftLine * s.Beta;
+            s.PayloadY = s.CartOffset - s.LiftLine * s.Alfa;
+            s.PayloadZ = -s.LiftLine;
         }
         else
         {
+            s.RailOffset = X;
+            s.CartOffset = Y;
+            s.LiftLine   = R;
             // Calculate payload position from Xw,Yw,α,β,R
             double α = _90degs - Alfa;
             s.Alfa = α;
@@ -82,43 +86,43 @@ namespace crane3d
         }
     }
 
+    void format(std::wostream& out, const wchar_t* fmt, ...)
+    {
+        const int max = 1024;
+        wchar_t buf[max];
+        va_list ap; va_start(ap, fmt);
+        int len = _vsnwprintf_s(buf, _TRUNCATE, fmt, ap);
+        if (len < 0) { len = max-1; }
+        out.write(buf, len);
+    }
+
     std::wstring Model::GetStateDebugText() const
     {
         ModelState state = GetState();
         std::wstringstream ss;
-        ss << L"Model: " << ToString(Type) << L'\n';
-        ss << std::setprecision(2);
-        ss << L"   X " << X     << L'\n';
-        ss << L"   Y " << Y     << L'\n';
-        ss << L"   R " << R     << L'\n';
-        ss << L"  vX " << X_vel << L" m/s \n";
-        ss << L"  vY " << Y_vel << L" m/s \n";
-        ss << L"  vR " << R_vel << L" m/s \n";
-        ss << L"  pX " << state.PayloadX << L'\n';
-        ss << L"  pY " << state.PayloadY << L"\n";
-        ss << L"  pZ " << state.PayloadZ << L"\n";
+        format(ss, L"Model: %hs \n", ToString(Type));
+        format(ss, L"  pos { %+6.2f, %+6.2f, %+6.2f }\n", state.PayloadX, state.PayloadY, state.PayloadZ);
+        format(ss, L"  XYR { %+6.2f, %+6.2f, %+6.2f }\n", state.RailOffset, state.CartOffset, state.LiftLine);
         if (Type == ModelType::Linear)
         {
-            ss << L"  Δα " << Δα     << L'\n';
-            ss << L"  Δβ " << Δβ     << L'\n';
-            ss << L" vΔα " << Δα_vel << L" u/s \n";
-            ss << L" vΔβ " << Δβ_vel << L" u/s \n";
+            format(ss, L" vXYR { %+6.2f, %+6.2f, %+6.2f } m/s\n", Rail.Vel, Cart.Vel, Line.Vel);
+            format(ss, L"  Δα    %+6.2f  v %+6.2f rad/s \n", CAlfa.Pos, CAlfa.Vel);
+            format(ss, L"  Δβ    %+6.2f  v %+6.2f rad/s \n", CBeta.Pos, CBeta.Vel);
         }
         else
         {
-            ss << L"  α " << Alfa     << L'\n';
-            ss << L"  β " << Beta     << L'\n';
-            ss << L" vα " << Alfa_vel << L" m/s \n";
-            ss << L" vβ " << Beta_vel << L" m/s \n";
+            format(ss, L" vXYR { %+6.2f, %+6.2f, %+6.2f } m/s\n", X_vel, Y_vel, R_vel);
+            format(ss, L"  α  %+6.2f  v %+6.2f rad/s \n", Alfa, Alfa_vel);
+            format(ss, L"  β  %+6.2f  v %+6.2f rad/s \n", Beta, Beta_vel);
         }
-        ss << L" a Cart " << ANetcart.Value << L" m/s² \n";
-        ss << L" a Rail " << ANetrail.Value << L" m/s² \n";
-        ss << L" a Wind " << ANetwind.Value << L" m/s² \n";
-        
-        ss << std::setw(2);
-        ss << L" F rail " << FnetRail.Value << L" := " << FappRail.Value << " " << FfriRail.Value << "\n";
-        ss << L" F cart " << FnetCart.Value << L" := " << FappCart.Value << " " << FfriCart.Value << "\n";
-        ss << L" F wind " << FnetWind.Value << L" := " << FappWind.Value << " " << FfriWind.Value << "\n";
+        auto printComponent = [&](const char* which, const Component& c) {
+            format(ss, L"  %hs a %+6.2f m/s², Fnet %+5.1f, Fapp %+5.1f, Fri %+5.1f \n",
+                which, c.NetAcc.Value, c.Fnet.Value, c.Applied.Value, c.Friction.Value);
+        };
+        printComponent("Rail", Rail);
+        printComponent("Cart", Cart);
+        printComponent("Line", Line);
+        format(ss, L"  iter# %5lld  dt %5.4f  iter/s %.1f \n", DiscreteStepCounter, DbgFixedTimeStep, DbgAvgIterations);
         return ss.str();
     }
 
@@ -135,9 +139,12 @@ namespace crane3d
     ModelState Model::UpdateFixed(double fixedTime, double deltaTime, Force Frail, Force Fcart, Force Fwind)
     {
         // we run the simulation with a constant time step
-        SimulationTime += deltaTime;
-        int iterations = static_cast<int>(SimulationTime / fixedTime);
-        SimulationTime -= floor(SimulationTime);
+        SimulationTimeSink += deltaTime;
+        int iterations = static_cast<int>(SimulationTimeSink / fixedTime);
+        SimulationTimeSink -= iterations * fixedTime;
+
+        DbgFixedTimeStep = fixedTime;
+        DbgAvgIterations = (DbgAvgIterations + iterations) * 0.5;
 
         for (int i = 0; i < iterations; ++i)
         {
@@ -150,13 +157,14 @@ namespace crane3d
 
     ModelState Model::Update(double deltaTime, Force Frail, Force Fcart, Force Fwind)
     {
+        ++DiscreteStepCounter;
         switch (Type)
         {
             default:
-            case ModelType::Linear: BasicLinearModel(deltaTime, Frail, Fcart, Fwind); break;
+            case ModelType::Linear:             BasicLinearModel(deltaTime, Frail, Fcart, Fwind); break;
             case ModelType::NonLinearConstLine: NonLinearConstLine(deltaTime, Frail, Fcart, Fwind); break;
-            case ModelType::NonLinearComplete: NonLinearCompleteModel(deltaTime, Frail, Fcart, Fwind); break;
-            case ModelType::NonLinearOriginal: NonLinearOriginalModel(deltaTime, Frail, Fcart, Fwind); break;
+            case ModelType::NonLinearComplete:  NonLinearCompleteModel(deltaTime, Frail, Fcart, Fwind); break;
+            case ModelType::NonLinearOriginal:  NonLinearOriginalModel(deltaTime, Frail, Fcart, Fwind); break;
         }
 
         GetState().Print();
@@ -167,47 +175,53 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
-    // `drivingAccel` must overcome `frictionAccel` in order to have an effect.
-    double ApplyStaticFriction(double drivingAccel, double frictionAccel)
+    void Component::Update(Accel new_acc, double dt)
     {
-        if (std::abs(drivingAccel) <= std::abs(frictionAccel))
-            return 0.0;
-        return sign(drivingAccel) * (std::abs(drivingAccel) - std::abs(frictionAccel));
+        double newPos = Pos + Vel * dt + Acc.Value*(dt*dt*0.5);
+        newPos = clamp(newPos, LimitMin, LimitMax);
+
+        // since position can be clamped, we calculate avg velocity instead
+        Vel = average_velocity(Pos, newPos, dt);
+        Pos = newPos;
+        Acc = new_acc;
+
+        Vel = Dampen(Vel); // dampen extremely small velocities
     }
 
-    Force Model::NetForce(Force applied, double velocity,
-        Mass m, double μStatic, double μKinetic, Force* outFriction) const
+    void Component::ApplyForce(Force applied, Accel g)
     {
-        Force Fnormal = m*g; // normal force between body and surface
-        Force friction = Force::Zero;
-        if (std::abs(velocity) < 0.001) // static friction
+        Force Fnormal = Mass * g; // normal force between body and surface
+        Friction = Force::Zero;
+        if (std::abs(Vel) < 0.001) // static friction
         {
-            Force staticMax = μStatic * Fnormal;
+            Force staticMax = CoeffStatic * Fnormal;
             if (abs(applied) > staticMax) // resist up to max static friction
-                friction = sign(applied) * (abs(applied) - staticMax);
+                Friction = sign(applied) * (abs(applied) - staticMax);
             else
-                friction = applied; // cancel out applied force
+                Friction = applied; // cancel out applied force
         }
         else
         {
-            Force kinetic = μKinetic * Fnormal;
-            friction = sign(velocity) * kinetic;
+            Force kinetic = CoeffKinetic * Fnormal;
+            Friction = sign(Vel) * kinetic;
         }
 
-        *outFriction = friction;
-        Force Fnet = applied - friction;
         // @note Fnet positive: driving dominates
         // @note Fnet negative: friction dominates
-        return Fnet;
+        Applied = applied;
+        Fnet = applied - Friction;
+        Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
+        NetAcc = Fnet / Mass;
     }
 
-    // if force would push X over limits, then force is 0
-    Force ClampForceByLimits(Force force, double x, double limitMin, double limitMax)
+    Force Component::ClampForceByPosLimits(Force force) const
     {
-        if (force > 0.0 && x >= limitMax) return Force::Zero;
-        if (force < 0.0 && x <= limitMin) return Force::Zero;
+        if (force > 0.0 && Pos >= LimitMax) return Force::Zero;
+        if (force < 0.0 && Pos <= LimitMin) return Force::Zero;
         return force;
     }
+
+    //////////////////////////////////////////////////////////////////////
 
     void Model::PrepareBasicRelations(Force Frail, Force Fcart, Force Fwind)
     {
@@ -221,10 +235,6 @@ namespace crane3d
         T2 = RailFriction / (Mcart + Mpayload).Value; // T2 = Tx / (Mw + Mc) | rail friction accel
         T3 = WindingFriction / Mpayload.Value;        // T3 = Tr / Mc        | line winding friction accel
 
-        N1 = ApplyStaticFriction(u1, T1); // cart net accel
-        N2 = ApplyStaticFriction(u2, T2); // rail net accel
-        N3 = ApplyStaticFriction(u3, T3); // line net accel
-                
         ADrcart = Fcart.Value / Mcart.Value;              // u1 = Fy / Mw        | cart driving accel
         ADrrail = Frail.Value / (Mcart + Mpayload).Value; // u2 = Fx / (Mw + Mc) | rail driving accel
         ADrwind = Fwind.Value / Mpayload.Value;           // u3 = Fr / Mc        | wind driving accel
@@ -232,6 +242,16 @@ namespace crane3d
         AFrcart = CartFriction / Mcart.Value;              // T1 = Ty / Mw        | cart friction accel
         AFrrail = RailFriction / (Mcart + Mpayload).Value; // T2 = Tx / (Mw + Mc) | rail friction accel
         AFrwind = WindingFriction / Mpayload.Value;        // T3 = Tr / Mc        | line winding friction accel
+
+        double Tsx = 5 / (Mcart + Mrail).Value; // 1.490
+        double Tsy = 7.5 / Mcart.Value; // 6.493
+        double Tsz = 10 / Mpayload.Value; // 10
+        double railFr = (X_vel * AFrrail + Tsx * sign(X_vel)); // some sort of rail friction accel
+        double cartFr = (Y_vel * AFrcart + Tsy * sign(Y_vel)); // some sort of cart friction accel
+        double aWind = -(R_vel * AFrwind + Tsz * sign(R_vel)); // NET winding accel
+        N1 = ADrcart - cartFr; // cart net accel
+        N2 = ADrrail - railFr; // rail net accel
+        N3 = ADrwind - aWind; // line net accel
 
         // these are cable driven friction coefficients:
         μ1 = Mpayload / Mcart;           // μ1 = Mc / Mw
@@ -241,20 +261,13 @@ namespace crane3d
         Mass Mcartpayload = Mcart+Mpayload;
         Mass Mall = Mrail+Mcart+Mpayload;
 
-        FappRail = Frail;
-        FappCart = Fcart;
-        FappWind = Fwind;
-        FnetRail = NetForce(Frail, X_vel, Mall,         μStaticDrySteel, μKineticDrySteel, &FfriRail);
-        FnetCart = NetForce(Fcart, Y_vel, Mcartpayload, μStaticDrySteel, μKineticDrySteel, &FfriCart);
-        FnetWind = NetForce(Fwind, R_vel, Mpayload,     μStaticDrySteel, μKineticDrySteel, &FfriWind);
+        Rail.Mass = Mrail+Mcart+Mpayload;
+        Cart.Mass = Mcart+Mpayload;
+        Line.Mass = Mpayload;
 
-        FnetRail = ClampForceByLimits(FnetRail, X, RailLimitMin, RailLimitMax);
-        FnetCart = ClampForceByLimits(FnetCart, Y, CartLimitMin, CartLimitMax);
-        FnetWind = ClampForceByLimits(FnetWind, R, LineLimitMin, LineLimitMax);
-
-        ANetrail = FnetRail / Mall;
-        ANetcart = FnetCart / Mcartpayload;
-        ANetwind = FnetWind / Mpayload;
+        Rail.ApplyForce(Frail, g);
+        Cart.ApplyForce(Fcart, g);
+        Line.ApplyForce(Fwind, g);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -264,45 +277,18 @@ namespace crane3d
     {
         PrepareBasicRelations(Frail, Fcart, Fwind);
 
-        // calculate force driven accelerations
-        Accel aX  = ANetrail + μ2 * Δβ * ANetwind;
-        Accel aY  = ANetcart - μ1 * Δα * ANetwind;
-        Accel aΔα =  (aY - g*Δα - 2*Δα_vel*R_vel) / R;
-        Accel aΔβ = -(aX + g*Δβ + 2*Δβ_vel*R_vel) / R;
-        Accel aR  = g - ANetwind;
+        // calculate new force driven accelerations
+        Accel aX = Rail.NetAcc + μ2 * CBeta.Pos * Line.NetAcc;
+        Accel aY = Cart.NetAcc - μ1 * CAlfa.Pos * Line.NetAcc;
+        Accel aR = g - Line.NetAcc;
+        Accel aA =  (aY - g*CAlfa.Pos - 2*CAlfa.Vel*Line.Vel) / R;
+        Accel aB = -(aX + g*CBeta.Pos + 2*CBeta.Vel*Line.Vel) / R;
 
-        // derive new positions within limits
-        double X2  = clamp(integrate_pos(X, X_vel, aX, dt),  RailLimitMin, RailLimitMax);
-        double Y2  = clamp(integrate_pos(Y, Y_vel, aY, dt),  CartLimitMin, CartLimitMax);
-        double R2  = clamp(integrate_pos(R, R_vel, aR, dt),  LineLimitMin, LineLimitMax);
-        double Δα2 = clamp(integrate_pos(Δα, Δα_vel, aΔα, dt), -0.05, +0.05);
-        double Δβ2 = clamp(integrate_pos(Δβ, Δβ_vel, aΔβ, dt), -0.05, +0.05);
-
-        //X_vel  = integrate_velocity(X_vel, aX, dt);
-        //Y_vel  = integrate_velocity(Y_vel, aY, dt);
-        //R_vel  = integrate_velocity(R_vel, aR, dt);
-        //Δα_vel = integrate_velocity(Δα_vel, aΔα, dt);
-        //Δβ_vel = integrate_velocity(Δβ_vel, aΔβ, dt);
-
-        // get the average velocities (due to clamp limits)
-        X_vel  = average_velocity(X, X2, dt);
-        Y_vel  = average_velocity(Y, Y2, dt);
-        R_vel  = average_velocity(R, R2, dt);
-        Δα_vel = average_velocity(Δα, Δα2, dt);
-        Δβ_vel = average_velocity(Δβ, Δβ2, dt);
-
-        // update positions for next frame
-        X = X2;
-        Y = Y2;
-        //R = R2; // @todo keep this const in a better way
-        Δα = Δα2;
-        Δβ = Δβ2;
-
-        X_vel  = Dampen(X_vel);
-        Y_vel  = Dampen(Y_vel);
-        R_vel  = Dampen(R_vel);
-        Δα_vel = Dampen(Δα_vel);
-        Δβ_vel = Dampen(Δβ_vel);
+        Rail.Update(aX, dt);
+        Cart.Update(aY, dt);
+        Line.Update(aR, dt);
+        CAlfa.Update(aA, dt);
+        CBeta.Update(aB, dt);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -337,7 +323,11 @@ namespace crane3d
         Alfa_vel += dt * aAlfa;
         Beta_vel += dt * aBeta;
 
-        ApplyLimits();
+        X = clamp(X, Rail.LimitMin, Rail.LimitMax);
+        Y = clamp(Y, Cart.LimitMin, Cart.LimitMax);
+        R = clamp(R, Line.LimitMin, Line.LimitMax);
+        Alfa = clamp(Alfa, -_PI, +_PI);
+        Beta = clamp(Beta, -_PI, +_PI);
     }
     
     //////////////////////////////////////////////////////////////////////
@@ -372,7 +362,11 @@ namespace crane3d
         Beta_vel += dt * aBeta;
         R_vel += dt * aR;
 
-        ApplyLimits();
+        X = clamp(X, Rail.LimitMin, Rail.LimitMax);
+        Y = clamp(Y, Cart.LimitMin, Cart.LimitMax);
+        R = clamp(R, Line.LimitMin, Line.LimitMax);
+        Alfa = clamp(Alfa, -_PI, +_PI);
+        Beta = clamp(Beta, -_PI, +_PI);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -381,9 +375,9 @@ namespace crane3d
     {
         PrepareBasicRelations(Frail, Fcart, Fwind);
 
-        double sA = sin(Alfa); double sB = sin(Beta);
-        double cA = cos(Alfa); double cB = cos(Beta);
-        double sA2 = sA*sA; double sB2 = sB*sB;
+        double sA = sin(Alfa), sB = sin(Beta);
+        double cA = cos(Alfa), cB = cos(Beta);
+        double sA2 = sA*sA,   sB2 = sB*sB;
         double μ1cA = μ1*cA;
         double μ2sAsB = μ2*sA*sB;
         double βv2 = Beta_vel*Beta_vel;
@@ -404,8 +398,8 @@ namespace crane3d
         double cartFr = (Y_vel * AFrcart + Tsy * sign(Y_vel)); // some sort of cart friction accel
         double aWind = -(R_vel * AFrwind + Tsz * sign(R_vel)); // NET winding accel
 
-        double aY = ADrcart - cartFr + μ1cA*u3 - μ1cA*aWind;
         double aX = ADrrail - railFr + μ2sAsB*u3 - μ2sAsB*aWind;
+        double aY = ADrcart - cartFr + μ1cA*u3 - μ1cA*aWind;
         double aAlfa = (-cartFr*sA
             + ADrcart * sA + cA*R * sA*βv2 - cA*ADrrail * sB + cA*cB*G
             - cA*μ2sAsB*sB*u3 + cA*μ2sAsB*sB*aWind + cA*railFr*sB
@@ -425,49 +419,23 @@ namespace crane3d
             + μ1 * aWind - μ1 * aWind*sA2
             + R * Alfa_vel * Alfa_vel - u3 + aWind;
 
-        Y += dt * Y_vel;
-        X += dt * X_vel;
-        Alfa += dt * Alfa_vel;
-        Beta += dt * Beta_vel;
-        R += dt * R_vel;
+        X = integrate_pos(X, X_vel, Accel{aX}, dt);
+        Y = integrate_pos(Y, Y_vel, Accel{aY}, dt);
+        R = integrate_pos(R, R_vel, Accel{aR}, dt);
+        Alfa = integrate_pos(Alfa, Alfa_vel, Accel{aAlfa}, dt);
+        Beta = integrate_pos(Beta, Beta_vel, Accel{aBeta}, dt);
 
-        Y_vel += dt * aY;
-        X_vel += dt * aX;
-        Alfa_vel += dt * aAlfa;
-        Beta_vel += dt * aBeta;
-        R_vel += dt * aR;
+        X_vel = integrate_velocity(X_vel, Accel{aX}, dt);
+        Y_vel = integrate_velocity(Y_vel, Accel{aY}, dt);
+        R_vel = integrate_velocity(R_vel, Accel{aR}, dt);
+        Alfa_vel = integrate_velocity(Alfa_vel, Accel{aAlfa}, dt);
+        Beta_vel = integrate_velocity(Beta_vel, Accel{aBeta}, dt);
 
-        ApplyLimits();
-    }
-
-    //////////////////////////////////////////////////////////////////////
-
-    void Model::ApplyLimits()
-    {
-        X = clamp(X, RailLimitMin, RailLimitMax);
-        Y = clamp(Y, CartLimitMin, CartLimitMax);
-        R  = clamp(R, LineLimitMin, LineLimitMax);
+        X = clamp(X, Rail.LimitMin, Rail.LimitMax);
+        Y = clamp(Y, Cart.LimitMin, Cart.LimitMax);
+        R = clamp(R, Line.LimitMin, Line.LimitMax);
         Alfa = clamp(Alfa, -_PI, +_PI);
         Beta = clamp(Beta, -_PI, +_PI);
-
-        // Δα and Δβ must be very small by definition
-        Δα = clamp(Δα, -0.2, +0.2);
-        Δβ = clamp(Δβ, -0.2, +0.2);
-    }
-
-    void Model::DampenAllValues()
-    {
-        Y   = Dampen(Y);
-        X   = Dampen(X);
-        Alfa = Dampen(Alfa);
-        Beta = Dampen(Beta);
-        R    = Dampen(R);
-
-        Y_vel   = Dampen(Y_vel);
-        X_vel   = Dampen(X_vel);
-        Alfa_vel = Dampen(Alfa_vel);
-        Beta_vel = Dampen(Beta_vel);
-        R_vel    = Dampen(R_vel);
     }
 
     //////////////////////////////////////////////////////////////////////

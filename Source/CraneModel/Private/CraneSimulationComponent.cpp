@@ -84,15 +84,15 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Model->CartFriction = CartFriction;
     Model->WindingFriction = WindingFriction;
 
-    Model->RailLimitMin = RailLimitMin / 100.0f;
-    Model->RailLimitMax = RailLimitMax / 100.0f;
-    Model->CartLimitMin = CartLimitMin / 100.0f;
-    Model->CartLimitMax = CartLimitMax / 100.0f;
-    Model->LineLimitMin = LineLimitMin / 100.0f;
-    Model->LineLimitMax = LineLimitMax / 100.0f;
+    Model->Rail.LimitMin = RailLimitMin / 100.0f;
+    Model->Rail.LimitMax = RailLimitMax / 100.0f;
+    Model->Cart.LimitMin = CartLimitMin / 100.0f;
+    Model->Cart.LimitMax = CartLimitMax / 100.0f;
+    Model->Line.LimitMin = LineLimitMin / 100.0f;
+    Model->Line.LimitMax = LineLimitMax / 100.0f;
 
     using crane3d::Force;
-    crane3d::ModelState state = Model->Update(DeltaTime, Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
+    crane3d::ModelState state = Model->UpdateFixed(1.0/1000.0, DeltaTime, Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
     UpdateVisibleFields(state);
 
     // reset all forces for this frame
