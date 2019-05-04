@@ -1,5 +1,7 @@
-#include <iostream>
+// Copyright (c) 2019 - Jorma Rebane Crane3D
+// Distributed under MIT License
 #include "Model.h"
+#include <iostream>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 

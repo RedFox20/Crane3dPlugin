@@ -73,10 +73,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Source\CraneModel\Private\KinematicComponent.cpp" />
+    <ClCompile Include="..\Source\CraneModel\Private\Kinematics.cpp" />
     <ClCompile Include="..\Source\CraneModel\Private\Model.cpp" />
     <ClCompile Include="TestsMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\CraneModel\Public\KinematicComponent.h" />
+    <ClInclude Include="..\Source\CraneModel\Public\Kinematics.h" />
     <ClInclude Include="..\Source\CraneModel\Public\Model.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

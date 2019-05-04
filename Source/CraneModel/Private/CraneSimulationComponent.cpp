@@ -121,6 +121,14 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
         {
             PayloadComponent->SetRelativeLocation(PayloadPosition);
 
+            if (CartComponent)
+            {
+                PayloadComponent->RelativeRotation = FRotator{FQuat::FindBetween(
+                    CartComponent->GetComponentLocation(),
+                    PayloadComponent->GetComponentLocation()
+                )};
+            }
+
             // cable visualization (DEBUG)
             DrawDebugLine(GetWorld(), CartComponent->GetComponentLocation(),
                 PayloadComponent->GetComponentLocation(), FColor(15, 15, 15), false, -1, 0, 1);

@@ -13,9 +13,21 @@
     <ClCompile Include="..\Source\CraneModel\Private\Model.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\CraneModel\Private\KinematicComponent.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\CraneModel\Private\Kinematics.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\CraneModel\Public\Model.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\CraneModel\Public\Kinematics.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\CraneModel\Public\KinematicComponent.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

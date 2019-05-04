@@ -1,4 +1,5 @@
-﻿// Copyright (c) 2019 - Jorma Rebane 3DCrane UE4
+﻿// Copyright (c) 2019 - Jorma Rebane Crane3D
+// Distributed under MIT License
 #include "Model.h"
 #include <cmath>
 #include <cstdio>
@@ -14,67 +15,38 @@ namespace crane3d
     static constexpr double _PI = 3.14159265358979323846;
     static constexpr double _90degs = (_PI / 2);
 
-    const Force Force::Zero { 0.0 };
-    const Mass  Mass::Zero  { 0.0 };
-    const Accel Accel::Zero { 0.0 };
-
-    constexpr double clamp(double x, double min, double max)
-    {
-        if (x <= min) return min;
-        if (x >= max) return max;
-        return x;
-    }
-    
-    // dampen values that are very close to 0.0
-    constexpr double Dampen(double x)
-    {
-        return std::abs(x) < 0.001 ? 0.0 : x;
-    }
-
     //////////////////////////////////////////////////////////////////////
     
-    Model::Model()
-    {
-        // Invert the alfa angle as required by the model
-        // α := 90° - α
-        Alfa = _90degs - Alfa;
-        Δα = 0.0;
-    }
+    Model::Model() = default;
 
     ModelState Model::GetState() const
     {
         // Restore the internal alfa representation
         ModelState s;
+        s.RailOffset = Rail.Pos;
+        s.CartOffset = Cart.Pos;
+        s.LiftLine   = Line.Pos;
+        s.Alfa = Alfa.Pos;
+        s.Beta = Beta.Pos;
 
         // Formulas given by 3DCrane mathematical model description
         if (Type == ModelType::Linear)
         {
-            s.RailOffset = Rail.Pos;
-            s.CartOffset = Cart.Pos;
-            s.LiftLine   = Line.Pos;
-            s.Alfa = CAlfa.Pos;
-            s.Beta = CBeta.Pos;
             s.PayloadX = s.RailOffset + s.LiftLine * s.Beta;
             s.PayloadY = s.CartOffset - s.LiftLine * s.Alfa;
             s.PayloadZ = -s.LiftLine;
         }
         else
         {
-            s.RailOffset = X;
-            s.CartOffset = Y;
-            s.LiftLine   = R;
             // Calculate payload position from Xw,Yw,α,β,R
-            double α = _90degs - Alfa;
-            s.Alfa = α;
-            s.Beta = Beta;
-            s.PayloadX = X + R * sin(α) * sin(Beta);
-            s.PayloadY = Y + R * cos(α);
-            s.PayloadZ = -R * sin(α) * cos(Beta);
+            s.PayloadX = s.RailOffset + s.LiftLine * sin(s.Alfa) * sin(s.Beta);
+            s.PayloadY = s.CartOffset + s.LiftLine * cos(s.Alfa);
+            s.PayloadZ = -s.LiftLine * sin(s.Alfa) * cos(s.Beta);
         }
         return s;
     }
 
-    const char* ToString(ModelType type)
+    static const char* ToString(ModelType type)
     {
         switch (type)
         {
@@ -86,9 +58,9 @@ namespace crane3d
         }
     }
 
-    void format(std::wostream& out, const wchar_t* fmt, ...)
+    static void format(std::wostream& out, const wchar_t* fmt, ...)
     {
-        const int max = 1024;
+        const int max = 2048;
         wchar_t buf[max];
         va_list ap; va_start(ap, fmt);
         int len = _vsnwprintf_s(buf, _TRUNCATE, fmt, ap);
@@ -101,20 +73,11 @@ namespace crane3d
         ModelState state = GetState();
         std::wstringstream ss;
         format(ss, L"Model: %hs \n", ToString(Type));
-        format(ss, L"  pos { %+6.2f, %+6.2f, %+6.2f }\n", state.PayloadX, state.PayloadY, state.PayloadZ);
-        format(ss, L"  XYR { %+6.2f, %+6.2f, %+6.2f }\n", state.RailOffset, state.CartOffset, state.LiftLine);
-        if (Type == ModelType::Linear)
-        {
-            format(ss, L" vXYR { %+6.2f, %+6.2f, %+6.2f } m/s\n", Rail.Vel, Cart.Vel, Line.Vel);
-            format(ss, L"  Δα    %+6.2f  v %+6.2f rad/s \n", CAlfa.Pos, CAlfa.Vel);
-            format(ss, L"  Δβ    %+6.2f  v %+6.2f rad/s \n", CBeta.Pos, CBeta.Vel);
-        }
-        else
-        {
-            format(ss, L" vXYR { %+6.2f, %+6.2f, %+6.2f } m/s\n", X_vel, Y_vel, R_vel);
-            format(ss, L"  α  %+6.2f  v %+6.2f rad/s \n", Alfa, Alfa_vel);
-            format(ss, L"  β  %+6.2f  v %+6.2f rad/s \n", Beta, Beta_vel);
-        }
+        format(ss, L"  pos %+6.2f, %+6.2f, %+6.2f \n", state.PayloadX, state.PayloadY, state.PayloadZ);
+        format(ss, L"  XYR %+6.2f, %+6.2f, %+6.2f \n", state.RailOffset, state.CartOffset, state.LiftLine);
+        format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s\n", Rail.Vel, Cart.Vel, Line.Vel);
+        format(ss, L"  α  %+6.2f v %+6.2f rad/s \n", Alfa.Pos, Alfa.Vel);
+        format(ss, L"  β  %+6.2f v %+6.2f rad/s \n", Beta.Pos, Beta.Vel);
         auto printComponent = [&](const char* which, const Component& c) {
             format(ss, L"  %hs a %+6.2f m/s², Fnet %+5.1f, Fapp %+5.1f, Fri %+5.1f \n",
                 which, c.NetAcc.Value, c.Fnet.Value, c.Applied.Value, c.Friction.Value);
@@ -175,99 +138,38 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
-    void Component::Update(Accel new_acc, double dt)
-    {
-        double newPos = Pos + Vel * dt + Acc.Value*(dt*dt*0.5);
-        newPos = clamp(newPos, LimitMin, LimitMax);
-
-        // since position can be clamped, we calculate avg velocity instead
-        Vel = average_velocity(Pos, newPos, dt);
-        Pos = newPos;
-        Acc = new_acc;
-
-        Vel = Dampen(Vel); // dampen extremely small velocities
-    }
-
-    void Component::ApplyForce(Force applied, Accel g)
-    {
-        Force Fnormal = Mass * g; // normal force between body and surface
-        Friction = Force::Zero;
-        if (std::abs(Vel) < 0.001) // static friction
-        {
-            Force staticMax = CoeffStatic * Fnormal;
-            if (abs(applied) > staticMax) // resist up to max static friction
-                Friction = sign(applied) * (abs(applied) - staticMax);
-            else
-                Friction = applied; // cancel out applied force
-        }
-        else
-        {
-            Force kinetic = CoeffKinetic * Fnormal;
-            Friction = sign(Vel) * kinetic;
-        }
-
-        // @note Fnet positive: driving dominates
-        // @note Fnet negative: friction dominates
-        Applied = applied;
-        Fnet = applied - Friction;
-        Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
-        NetAcc = Fnet / Mass;
-    }
-
-    Force Component::ClampForceByPosLimits(Force force) const
-    {
-        if (force > 0.0 && Pos >= LimitMax) return Force::Zero;
-        if (force < 0.0 && Pos <= LimitMin) return Force::Zero;
-        return force;
-    }
-
-    //////////////////////////////////////////////////////////////////////
-
     void Model::PrepareBasicRelations(Force Frail, Force Fcart, Force Fwind)
     {
         // prepare basic relations
         // we recalculate every frame to allow dynamically changing the model parameters
-        u1 = Fcart.Value / Mcart.Value;              // u1 = Fy / Mw        | cart accel
-        u2 = Frail.Value / (Mcart + Mpayload).Value; // u2 = Fx / (Mw + Mc) | rail accel
-        u3 = Fwind.Value / Mpayload.Value;           // u3 = Fr / Mc        | line accel
-
-        T1 = CartFriction / Mcart.Value;              // T1 = Ty / Mw        | cart friction accel
-        T2 = RailFriction / (Mcart + Mpayload).Value; // T2 = Tx / (Mw + Mc) | rail friction accel
-        T3 = WindingFriction / Mpayload.Value;        // T3 = Tr / Mc        | line winding friction accel
-
-        ADrcart = Fcart.Value / Mcart.Value;              // u1 = Fy / Mw        | cart driving accel
-        ADrrail = Frail.Value / (Mcart + Mpayload).Value; // u2 = Fx / (Mw + Mc) | rail driving accel
-        ADrwind = Fwind.Value / Mpayload.Value;           // u3 = Fr / Mc        | wind driving accel
-
-        AFrcart = CartFriction / Mcart.Value;              // T1 = Ty / Mw        | cart friction accel
-        AFrrail = RailFriction / (Mcart + Mpayload).Value; // T2 = Tx / (Mw + Mc) | rail friction accel
-        AFrwind = WindingFriction / Mpayload.Value;        // T3 = Tr / Mc        | line winding friction accel
-
-        double Tsx = 5 / (Mcart + Mrail).Value; // 1.490
-        double Tsy = 7.5 / Mcart.Value; // 6.493
-        double Tsz = 10 / Mpayload.Value; // 10
-        double railFr = (X_vel * AFrrail + Tsx * sign(X_vel)); // some sort of rail friction accel
-        double cartFr = (Y_vel * AFrcart + Tsy * sign(Y_vel)); // some sort of cart friction accel
-        double aWind = -(R_vel * AFrwind + Tsz * sign(R_vel)); // NET winding accel
-        N1 = ADrcart - cartFr; // cart net accel
-        N2 = ADrrail - railFr; // rail net accel
-        N3 = ADrwind - aWind; // line net accel
 
         // these are cable driven friction coefficients:
         μ1 = Mpayload / Mcart;           // μ1 = Mc / Mw
         μ2 = Mpayload / (Mcart + Mrail); // μ2 = Mc / (Mw + Ms)
 
         // New friction model
-        Mass Mcartpayload = Mcart+Mpayload;
-        Mass Mall = Mrail+Mcart+Mpayload;
-
-        Rail.Mass = Mrail+Mcart+Mpayload;
-        Cart.Mass = Mcart+Mpayload;
+        Rail.Mass = Mrail+Mcart;
+        Cart.Mass = Mcart;
         Line.Mass = Mpayload;
 
-        Rail.ApplyForce(Frail, g);
-        Cart.ApplyForce(Fcart, g);
-        Line.ApplyForce(Fwind, g);
+        if (Type == ModelType::Linear)
+        {
+            Alfa.LimitMin = -0.05; Alfa.LimitMax = +0.05;
+            Beta.LimitMin = -0.05; Beta.LimitMax = +0.05;
+
+            Rail.ApplyForce(Frail, g);
+            Cart.ApplyForce(Fcart, g);
+            Line.ApplyForce(Fwind, g);
+        }
+        else
+        {
+            Alfa.LimitMin = -_90degs/2; Alfa.LimitMax = +_90degs/2;
+            Beta.LimitMin = -_90degs/2; Beta.LimitMax = +_90degs/2;
+            double Tsx = 5.0, Tsy = 7.5, Tsz = 10.0;
+            Rail.ApplyForceNonLinear(Frail, g, RailFriction, Tsx, 1.0);
+            Cart.ApplyForceNonLinear(Fcart, g, CartFriction, Tsy, 1.0);
+            Line.ApplyForceNonLinear(Fwind, g, WindingFriction, Tsz, -1.0);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -278,17 +180,18 @@ namespace crane3d
         PrepareBasicRelations(Frail, Fcart, Fwind);
 
         // calculate new force driven accelerations
-        Accel aX = Rail.NetAcc + μ2 * CBeta.Pos * Line.NetAcc;
-        Accel aY = Cart.NetAcc - μ1 * CAlfa.Pos * Line.NetAcc;
+        double R = Line.Pos;
+        Accel aX = Rail.NetAcc + μ2 * Beta.Pos * Line.NetAcc;
+        Accel aY = Cart.NetAcc - μ1 * Alfa.Pos * Line.NetAcc;
         Accel aR = g - Line.NetAcc;
-        Accel aA =  (aY - g*CAlfa.Pos - 2*CAlfa.Vel*Line.Vel) / R;
-        Accel aB = -(aX + g*CBeta.Pos + 2*CBeta.Vel*Line.Vel) / R;
+        Accel aA =  (aY - g*Alfa.Pos - 2*Alfa.Vel*Line.Vel) / R;
+        Accel aB = -(aX + g*Beta.Pos + 2*Beta.Vel*Line.Vel) / R;
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
         Line.Update(aR, dt);
-        CAlfa.Update(aA, dt);
-        CBeta.Update(aB, dt);
+        Alfa.Update(aA, dt);
+        Beta.Update(aB, dt);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -297,76 +200,54 @@ namespace crane3d
     {
         PrepareBasicRelations(Frail, Fcart, Fwind);
 
-        double sA = sin(Alfa); double sB = sin(Beta);
-        double cA = cos(Alfa); double cB = cos(Beta);
+        double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
+        double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
         double sA2 = sA*sA; double sB2 = sB*sB; double cA2 = cA*cA;
 
         double A = 1 + μ1 * cA2 + μ2 * sA2*sB2;
         double B = 1 + μ1;
-        double V1 = μ1*R*cA*(Alfa_vel*Alfa_vel + sA2*Beta_vel*Beta_vel) + μ1*G*cA*sA*cB;
-        double V2 = μ2*R*sB*(sA*sA2*Beta_vel*Beta_vel + sA*Alfa_vel*Alfa_vel) + μ2*G*sA2*cB*sB;
-        double V3 = B*G*cA*cB + B*R*cA*sA*Beta_vel*Beta_vel + (μ1 - μ2*sB2)*R*cA*sA*Alfa_vel*Alfa_vel;
-        double V4 = μ2*R*sA*cB*sB*(Alfa_vel*Alfa_vel + sA2*Beta_vel*Beta_vel) + (B + (μ2 - μ1)*sA2)*G*sB + 2*R*A*cA*Alfa_vel*Beta_vel;
+        double R = Line.Pos;
+        double V1 = μ1*R*cA*(Alfa.Vel*Alfa.Vel + sA2*Beta.Vel*Beta.Vel) + μ1*G*cA*sA*cB;
+        double V2 = μ2*R*sB*(sA*sA2*Beta.Vel*Beta.Vel + sA*Alfa.Vel*Alfa.Vel) + μ2*G*sA2*cB*sB;
+        double V3 = B*G*cA*cB + B*R*cA*sA*Beta.Vel*Beta.Vel + (μ1 - μ2*sB2)*R*cA*sA*Alfa.Vel*Alfa.Vel;
+        double V4 = μ2*R*sA*cB*sB*(Alfa.Vel*Alfa.Vel + sA2*Beta.Vel*Beta.Vel) + (B + (μ2 - μ1)*sA2)*G*sB + 2*R*A*cA*Alfa.Vel*Beta.Vel;
 
-        double aY = ((1 + μ2*sA2*sB2)*N1 - μ1*cA*sA*sB*N2 + V1) / A;
-        double aX = (-μ2*cA*sA*sB*N1 + (1 + μ1*cA2)*N2 + V2) / A;
-        double aAlfa = ((1 + μ2*sB2)*sA*N1 - B*cA*sB*N2 + V3) / (R*A);
-        double aBeta = (μ2*cA*sA*cB*sB*N1 - (B - μ1 * sA2)*cB*N2 - V4) / (R*A*sA);
+        Accel aX = (-μ2*cA*sA*sB*Cart.NetAcc + (1 + μ1*cA2)*Rail.NetAcc + V2) / A;
+        Accel aY = ((1 + μ2*sA2*sB2)*Cart.NetAcc - μ1*cA*sA*sB*Rail.NetAcc + V1) / A;
+        Accel aA = ((1 + μ2*sB2)*sA*Cart.NetAcc - B*cA*sB*Rail.NetAcc + V3) / (R*A);
+        Accel aB = (μ2*cA*sA*cB*sB*Cart.NetAcc - (B - μ1 * sA2)*cB*Rail.NetAcc - V4) / (R*A*sA);
 
-        Y += dt * Y_vel;
-        X += dt * X_vel;
-        Alfa += dt * Alfa_vel;
-        Beta += dt * Beta_vel;
-
-        Y_vel += dt * aY;
-        X_vel += dt * aX;
-        Alfa_vel += dt * aAlfa;
-        Beta_vel += dt * aBeta;
-
-        X = clamp(X, Rail.LimitMin, Rail.LimitMax);
-        Y = clamp(Y, Cart.LimitMin, Cart.LimitMax);
-        R = clamp(R, Line.LimitMin, Line.LimitMax);
-        Alfa = clamp(Alfa, -_PI, +_PI);
-        Beta = clamp(Beta, -_PI, +_PI);
+        Rail.Update(aX, dt);
+        Cart.Update(aY, dt);
+        Alfa.Update(aA, dt);
+        Beta.Update(aB, dt);
     }
     
     //////////////////////////////////////////////////////////////////////
 
     void Model::NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        double sA = sin(Alfa);
-        double sB = sin(Beta);
-        double cA = cos(Alfa);
-        double cB = cos(Beta);
         PrepareBasicRelations(Frail, Fcart, Fwind);
 
-        double V5 = cA * sA*Beta_vel*Beta_vel*R - 2*R_vel*Alfa_vel + G * cA*cB;
-        double V6 = 2 * Beta_vel*(cA*Alfa_vel*R + sA * R_vel) + G * sB;
-        double V7 = sA * sA*Beta_vel*Beta_vel*R + G * sA*cB + Alfa_vel * Alfa_vel*R;
+        double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
+        double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
 
-        double aY = N1 + μ1 * cA * N3;
-        double aX = N2 + μ2 * sA * sB * N3;
-        double aAlfa = (sA * N1 - cA * sB * N2 + (μ1 - μ2 * sB*sB) * cA*sA*N3 * V5) / R;
-        double aBeta = -(cB*N2 + μ2 * sA*cB*sB*N3 + V6) / (sA*R);
-        double aR = -cA * N1 - sA * sB*N2 - (1 + μ1 * cA*cA + μ2 * sA*sA*sB*sB)*N3 + V7;
+        double R = Line.Pos;
+        double V5 = cA*sA*Beta.Vel*Beta.Vel*R - 2*Line.Vel*Alfa.Vel + G * cA*cB;
+        double V6 = 2 * Beta.Vel*(cA*Alfa.Vel*R + sA * Line.Vel) + G * sB;
+        double V7 = sA*sA*Beta.Vel*Beta.Vel*R + G * sA*cB + Alfa.Vel * Alfa.Vel*R;
 
-        Y += dt * Y_vel;
-        X += dt * X_vel;
-        Alfa += dt * Alfa_vel;
-        Beta += dt * Beta_vel;
-        R += dt * R_vel;
+        Accel aY = Cart.NetAcc + μ1 * cA * Line.NetAcc;
+        Accel aX = Rail.NetAcc + μ2 * sA * sB * Line.NetAcc;
+        Accel aA = (sA * Cart.NetAcc - cA * sB * Rail.NetAcc + (μ1 - μ2 * sB*sB) * cA*sA*Line.NetAcc * V5) / R;
+        Accel aB = -(cB*Rail.NetAcc + μ2 * sA*cB*sB*Line.NetAcc + V6) / (sA*R);
+        Accel aR = -cA * Cart.NetAcc - sA * sB*Rail.NetAcc - (1 + μ1 * cA*cA + μ2 * sA*sA*sB*sB)*Line.NetAcc + V7;
 
-        Y_vel += dt * aY;
-        X_vel += dt * aX;
-        Alfa_vel += dt * aAlfa;
-        Beta_vel += dt * aBeta;
-        R_vel += dt * aR;
-
-        X = clamp(X, Rail.LimitMin, Rail.LimitMax);
-        Y = clamp(Y, Cart.LimitMin, Cart.LimitMax);
-        R = clamp(R, Line.LimitMin, Line.LimitMax);
-        Alfa = clamp(Alfa, -_PI, +_PI);
-        Beta = clamp(Beta, -_PI, +_PI);
+        Rail.Update(aX, dt);
+        Cart.Update(aY, dt);
+        Line.Update(aR, dt);
+        Alfa.Update(aA, dt);
+        Beta.Update(aB, dt);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -375,67 +256,65 @@ namespace crane3d
     {
         PrepareBasicRelations(Frail, Fcart, Fwind);
 
-        double sA = sin(Alfa), sB = sin(Beta);
-        double cA = cos(Alfa), cB = cos(Beta);
+        // Invert the alfa angle as required by the model
+        // α := 90° - α
+
+        double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
+        double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
         double sA2 = sA*sA,   sB2 = sB*sB;
         double μ1cA = μ1*cA;
         double μ2sAsB = μ2*sA*sB;
-        double βv2 = Beta_vel*Beta_vel;
+        double βv2 = Beta.Vel*Beta.Vel;
+        double R = Line.Pos;
 
-        double V5 = cA*sA*βv2*R - 2 * R_vel*Alfa_vel + G * cA*cB;
-        double V6 = 2 * Beta_vel*(cA*Alfa_vel*R + sA * R_vel) + G * sB;
-        double V7 = sA2*βv2*R + G * sA*cB + Alfa_vel * Alfa_vel*R;
+        double V5 = cA*sA*βv2*R - 2 * Line.Vel*Alfa.Vel + G * cA*cB;
+        double V6 = 2 * Beta.Vel*(cA*Alfa.Vel*R + sA * Line.Vel) + G * sB;
+        double V7 = sA2*βv2*R + G * sA*cB + Alfa.Vel * Alfa.Vel*R;
 
-        double Tsx = 5 / (Mcart + Mrail).Value; // 1.490
+        Accel ADrrail = Frail / (Mcart + Mpayload); // u2 = Fx / (Mw + Mc) | rail driving accel
+        Accel ADrcart = Fcart / Mcart;              // u1 = Fy / Mw        | cart driving accel
+        Accel ADrwind = Fwind / Mpayload;           // u3 = Fr / Mc        | wind driving accel
+
+        Accel AFrrail = Force{RailFriction} / (Mcart + Mpayload); // T2 = Tx / (Mw + Mc) | rail friction accel
+        Accel AFrcart = Force{CartFriction} / Mcart;              // T1 = Ty / Mw        | cart friction accel
+        Accel AFrwind = Force{WindingFriction} / Mpayload;        // T3 = Tr / Mc        | line winding friction accel
+
+        double Tsx = 5.0 / (Mcart + Mrail).Value; // 1.490
         double Tsy = 7.5 / Mcart.Value; // 6.493
-        double Tsz = 10 / Mpayload.Value; // 10
+        double Tsz = 10. / Mpayload.Value; // 10
+        Accel railFr = (Rail.Vel * AFrrail + Tsx * sign(Rail.Vel)); // some sort of rail friction accel
+        Accel cartFr = (Cart.Vel * AFrcart + Tsy * sign(Cart.Vel)); // some sort of cart friction accel
+        Accel windFr = -(Line.Vel * AFrwind + Tsz * sign(Line.Vel)); // NET winding accel
+        Accel RailNetAcc = ADrrail - railFr; // N2 = rail net accel
+        Accel CartNetAcc = ADrcart - cartFr; // N1 = cart net accel
+        Accel WindNetAcc = ADrwind - windFr; // N3 = line net accel
 
-        AFrrail = RailFriction / (Mcart + Mpayload).Value; // T2 = Tx / (Mw + Mc) | rail friction accel
-        AFrcart = CartFriction / Mcart.Value;              // T1 = Ty / Mw        | cart friction accel
-        AFrwind = WindingFriction / Mpayload.Value;        // T3 = Tr / Mc        | line winding friction accel
-
-        double railFr = (X_vel * AFrrail + Tsx * sign(X_vel)); // some sort of rail friction accel
-        double cartFr = (Y_vel * AFrcart + Tsy * sign(Y_vel)); // some sort of cart friction accel
-        double aWind = -(R_vel * AFrwind + Tsz * sign(R_vel)); // NET winding accel
-
-        double aX = ADrrail - railFr + μ2sAsB*u3 - μ2sAsB*aWind;
-        double aY = ADrcart - cartFr + μ1cA*u3 - μ1cA*aWind;
-        double aAlfa = (-cartFr*sA
+        Accel aX = ADrrail - railFr + μ2sAsB*ADrwind - μ2sAsB*windFr;
+        Accel aY = ADrcart - cartFr + μ1cA*ADrwind - μ1cA*windFr;
+        Accel aA = (-cartFr*sA
             + ADrcart * sA + cA*R * sA*βv2 - cA*ADrrail * sB + cA*cB*G
-            - cA*μ2sAsB*sB*u3 + cA*μ2sAsB*sB*aWind + cA*railFr*sB
-            + μ1cA*u3 * sA - μ1cA*aWind*sA - 2 * R_vel * Alfa_vel
+            - cA*μ2sAsB*sB*ADrwind + cA*μ2sAsB*sB*windFr + cA*railFr*sB
+            + μ1cA*ADrwind * sA - μ1cA*windFr*sA - 2 * Line.Vel * Alfa.Vel
             ) / R;
-        double aBeta = -(
-            cB*ADrrail + G * sB + 2 * R * cA*Alfa_vel * Beta_vel
-            + cB*μ2sAsB*u3 - cB*μ2sAsB*aWind
-            + 2 * R_vel * sA*Beta_vel - cB*railFr
+        Accel aB = -(
+            cB*ADrrail + G * sB + 2 * R * cA*Alfa.Vel * Beta.Vel
+            + cB*μ2sAsB*ADrwind - cB*μ2sAsB*windFr
+            + 2 * Line.Vel * sA*Beta.Vel - cB*railFr
             ) / (R * sA);
-        double aR = cA*cartFr - cA*ADrcart
+        Accel aR = cA*cartFr - cA*ADrcart
             + R * sA2*βv2 - ADrrail * sA*sB
             + sA*cB*G
-            - μ2sAsB*sA*sB*u3 + μ2sAsB*sA*sB*aWind
+            - μ2sAsB*sA*sB*ADrwind + μ2sAsB*sA*sB*windFr
             + railFr*sA*sB
-            - μ1*u3 + μ1*u3*sA2
-            + μ1 * aWind - μ1 * aWind*sA2
-            + R * Alfa_vel * Alfa_vel - u3 + aWind;
+            - μ1*ADrwind + μ1*ADrwind*sA2
+            + μ1 * windFr - μ1 * windFr*sA2
+            + R * Alfa.Vel * Alfa.Vel - ADrwind + windFr;
 
-        X = integrate_pos(X, X_vel, Accel{aX}, dt);
-        Y = integrate_pos(Y, Y_vel, Accel{aY}, dt);
-        R = integrate_pos(R, R_vel, Accel{aR}, dt);
-        Alfa = integrate_pos(Alfa, Alfa_vel, Accel{aAlfa}, dt);
-        Beta = integrate_pos(Beta, Beta_vel, Accel{aBeta}, dt);
-
-        X_vel = integrate_velocity(X_vel, Accel{aX}, dt);
-        Y_vel = integrate_velocity(Y_vel, Accel{aY}, dt);
-        R_vel = integrate_velocity(R_vel, Accel{aR}, dt);
-        Alfa_vel = integrate_velocity(Alfa_vel, Accel{aAlfa}, dt);
-        Beta_vel = integrate_velocity(Beta_vel, Accel{aBeta}, dt);
-
-        X = clamp(X, Rail.LimitMin, Rail.LimitMax);
-        Y = clamp(Y, Cart.LimitMin, Cart.LimitMax);
-        R = clamp(R, Line.LimitMin, Line.LimitMax);
-        Alfa = clamp(Alfa, -_PI, +_PI);
-        Beta = clamp(Beta, -_PI, +_PI);
+        Rail.Update(aX, dt);
+        Cart.Update(aY, dt);
+        Line.Update(aR, dt);
+        Alfa.Update(aA, dt);
+        Beta.Update(aB, dt);
     }
 
     //////////////////////////////////////////////////////////////////////
