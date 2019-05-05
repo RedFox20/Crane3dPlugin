@@ -29,7 +29,16 @@ namespace crane3d
         Line.Reset();
         Alfa.Reset();
         Beta.Reset();
+
         Line.Pos = 0.5;
+        Line.FrictionDir = -1.0;
+        Line.CoeffStatic = 0.3;
+        Line.CoeffKinetic = 0.2;
+
+        Rail.VelMax = VelocityMax;
+        Cart.VelMax = VelocityMax;
+        Line.VelMax = VelocityMax;
+
         if (Type == ModelType::Linear)
         {
             Alfa.SetLimits(-0.05, 0.05);
@@ -38,10 +47,9 @@ namespace crane3d
         else
         {
             // Invert the alfa angle as required by non-linear models
-            // α := 90°
             Alfa.Pos = _90degs;
-            Alfa.SetLimits(-_PI*2, _PI*2);
-            Beta.SetLimits(-_PI*2, _PI*2);
+            Alfa.SetLimits(0, _PI);
+            Beta.SetLimits(-_90degs, _90degs);
         }
     }
 
@@ -116,8 +124,8 @@ namespace crane3d
         format(ss, L"  α  %+6.2f v %+6.2f rad/s \n", Alfa.Pos, Alfa.Vel);
         format(ss, L"  β  %+6.2f v %+6.2f rad/s \n", Beta.Pos, Beta.Vel);
         auto printComponent = [&](const char* which, const Component& c) {
-            format(ss, L"  %hs a %+6.2f m/s², Fnet %+5.1f, Fapp %+5.1f, Fri %+5.1f \n",
-                which, c.NetAcc.Value, c.Fnet.Value, c.Applied.Value, c.Friction.Value);
+            format(ss, L"  %hs a %+6.2f m/s², Fdrv %+5.1f, Fapp %+5.1f, Fst %+5.1f, Fki %+5.1f \n",
+                which, c.Acc.Value, c.Fnet.Value, c.Applied.Value, c.SFriction.Value, c.KFriction.Value);
         };
         printComponent("Rail", Rail);
         printComponent("Cart", Cart);
@@ -198,9 +206,9 @@ namespace crane3d
         else
         {
             double Tsx = 5.0, Tsy = 7.5, Tsz = 10.0;
-            Rail.ApplyForceNonLinear(Frail, g, RailFriction, Tsx, 1.0);
-            Cart.ApplyForceNonLinear(Fcart, g, CartFriction, Tsy, 1.0);
-            Line.ApplyForceNonLinear(Fwind, g, WindingFriction, Tsz, -1.0);
+            Rail.ApplyForceNonLinear(Frail, g, RailFriction, Tsx);
+            Cart.ApplyForceNonLinear(Fcart, g, CartFriction, Tsy);
+            Line.ApplyForceNonLinear(Fwind, g, WindingFriction, Tsz);
         }
     }
 
@@ -216,11 +224,13 @@ namespace crane3d
         Accel aX = Rail.NetAcc + μ2 * Beta.Pos * Line.NetAcc;
         Accel aY = Cart.NetAcc - μ1 * Alfa.Pos * Line.NetAcc;
         Accel aR = g - Line.NetAcc;
-        Accel aA =  (aY - g*Alfa.Pos - 2*Alfa.Vel*Line.Vel) / R;
-        Accel aB = -(aX + g*Beta.Pos + 2*Beta.Vel*Line.Vel) / R;
+        double line_vel = integrate_velocity(0.0, aR, dt);
+        Accel aA =  (aY - g*Alfa.Pos - 2*Alfa.Vel*line_vel) / R;
+        Accel aB = -(aX + g*Beta.Pos + 2*Beta.Vel*line_vel) / R;
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
+        Line.Const = (Fwind == 0.0);
         Line.Update(aR, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
@@ -271,14 +281,14 @@ namespace crane3d
         double G = g.Value;
         double b2 = Beta.Vel*Beta.Vel;
         double V5 = cA*sA*b2*R - 2*Line.Vel*Alfa.Vel + G*cA*cB;
-        double V6 = 2 * Beta.Vel*(cA*Alfa.Vel*R + sA * Line.Vel) + G*sB;
-        double V7 = sA*sA*b2*R + G*sA*cB + Alfa.Vel * Alfa.Vel*R;
+        double V6 = 2*Beta.Vel*(cA*Alfa.Vel*R + sA*Line.Vel) + G*sB;
+        double V7 = sA*sA*b2*R + G*sA*cB + Alfa.Vel*Alfa.Vel*R;
 
-        Accel aY = Cart.NetAcc + μ1 * cA * Line.NetAcc;
-        Accel aX = Rail.NetAcc + μ2 * sA * sB * Line.NetAcc;
-        Accel aA = (sA * Cart.NetAcc - cA * sB * Rail.NetAcc + (μ1 - μ2 * sB*sB) * cA*sA*Line.NetAcc * V5) / R;
-        Accel aB = -(cB*Rail.NetAcc + μ2 * sA*cB*sB*Line.NetAcc + V6) / (sA*R);
-        Accel aR = -cA * Cart.NetAcc - sA * sB*Rail.NetAcc - (1 + μ1 * cA*cA + μ2 * sA*sA*sB*sB)*Line.NetAcc + V7;
+        Accel aX = Rail.NetAcc + μ2 * Line.NetAcc * sA * sB;
+        Accel aY = Cart.NetAcc + μ1 * Line.NetAcc * cA;
+        Accel aA =  (sA*Cart.NetAcc - cA*sB*Rail.NetAcc + (μ1 - μ2*sB*sB)*cA*sA*Line.NetAcc + V5) / R;
+        Accel aB = -(cB*Rail.NetAcc + μ2*sA*cB*sB*Line.NetAcc + V6) / (sA*R);
+        Accel aR =  -cA*Cart.NetAcc - sA*sB*Rail.NetAcc - (1 + μ1*cA*cA + μ2*sA*sA*sB*sB)*Line.NetAcc + V7;
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
@@ -331,10 +341,10 @@ namespace crane3d
             + μ1cA*ADrwind * sA - μ1cA*windFr*sA - 2 * Line.Vel * Alfa.Vel
             ) / R;
         Accel aB = -(
-            cB*ADrrail + g * sB + 2 * R * cA*Alfa.Vel * Beta.Vel
+            cB*ADrrail + g*sB + 2*R * cA*Alfa.Vel*Beta.Vel
             + cB*μ2sAsB*ADrwind - cB*μ2sAsB*windFr
             + 2 * Line.Vel * sA*Beta.Vel - cB*railFr
-            ) / (R * sA);
+            ) / (R*sA);
         Accel aR = cA*cartFr - cA*ADrcart
             + R * sA2*βv2 - ADrrail * sA*sB
             + sA*cB*g

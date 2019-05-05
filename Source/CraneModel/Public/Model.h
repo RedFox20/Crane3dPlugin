@@ -87,6 +87,9 @@ namespace crane3d
         //   of the lift-line onto the xz plane
         Component Beta { 0.0, -0.05, +0.05 };
 
+        // Maximum crane component velocity for Rail, Cart, Line
+        double VelocityMax = 0.3; // m/s
+
         double RailFriction = 100.0; // Tx rail friction
         double CartFriction = 82.0;  // Ty cart friction
         double WindingFriction = 75.0;  // Tr liftline winding friction 

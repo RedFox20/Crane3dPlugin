@@ -20,6 +20,7 @@ namespace crane3d
         Unit operator/(double x) const { return { Value / x }; }
         bool operator>(double b) const { return Value > b; }
         bool operator<(double b) const { return Value < b; }
+        bool operator==(double b) const { return Value == b; }
         double operator/(Unit b) const { return Value / b.Value; }
         Unit operator-() const { return { -Value }; }
     };

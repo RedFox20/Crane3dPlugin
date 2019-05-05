@@ -15,9 +15,13 @@ namespace crane3d
     }
 
     // dampens values that are very close to 0.0
-    constexpr double dampen(double x)
+    static double dampen(double x)
     {
         return std::abs(x) < 0.001 ? 0.0 : x;
+    }
+    static Force dampen(Force force)
+    {
+        return { std::abs(force.Value) < 0.001 ? 0.0 : force.Value };
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -26,61 +30,77 @@ namespace crane3d
     {
         Pos = Vel = 0.0;
         Acc = NetAcc = Accel::Zero;
-        Applied = Friction = Fnet = Force::Zero;
+        Applied = SFriction = KFriction = Fnet = Force::Zero;
     }
 
     void Component::Update(Accel new_acc, double dt)
     {
-        double newPos = Pos + Vel * dt + Acc.Value*(dt*dt*0.5);
-        newPos = clamp(newPos, LimitMin, LimitMax);
+        if (!Const)
+        {
+            double newPos = Pos + Vel * dt + Acc.Value*(dt*dt*0.5);
+            newPos = clamp(newPos, LimitMin, LimitMax);
 
-        // since position can be clamped, we calculate avg velocity instead
-        Vel = average_velocity(Pos, newPos, dt);
-        Pos = newPos;
+            // since position can be clamped, we calculate avg velocity instead
+            Vel = average_velocity(Pos, newPos, dt);
+            Pos = newPos;
+
+            if (VelMax > 0.0 && std::abs(Vel) > VelMax) {
+                Vel = sign(Vel) * VelMax;
+            }
+        }
         Acc = new_acc;
-
-        Vel = dampen(Vel); // dampen extremely small velocities
+        //Vel = dampen(Vel); // dampen extremely small velocities
     }
 
     void Component::ApplyForce(Force applied, Accel g)
     {
         Force Fnormal = Mass * g; // normal force between body and surface
-        Friction = Force::Zero;
+        SFriction = Force::Zero;
+        KFriction = Force::Zero;
         if (std::abs(Vel) < 0.001) // static friction
         {
             Force staticMax = CoeffStatic * Fnormal;
             if (abs(applied) > staticMax) // resist up to max static friction
-                Friction = sign(applied) * (abs(applied) - staticMax);
+                SFriction = sign(applied) * (abs(applied) - staticMax);
             else
-                Friction = applied; // cancel out applied force
+                SFriction = applied; // cancel out applied force
         }
         else
         {
-            Force kinetic = CoeffKinetic * Fnormal;
-            Friction = sign(Vel) * kinetic;
+            KFriction = sign(Vel) * CoeffKinetic * Fnormal;
         }
 
         // @note Fnet positive: driving dominates
         // @note Fnet negative: friction dominates
         Applied = applied;
-        Fnet = applied - Friction;
+        Fnet = applied - FrictionDir * (SFriction + KFriction);
+        Fnet = dampen(Fnet);
         Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
         NetAcc = Fnet / Mass;
     }
 
-    void Component::ApplyForceNonLinear(Force applied, Accel g, double T, double Ts, double dir)
+    void Component::ApplyForceNonLinear(Force applied, Accel g, double T, double Ts)
     {
-        Friction = Force{ dir * (Vel*T  +  Ts*sign(Vel)) };
+        SFriction = Force{ Vel*T };
+        KFriction = Force{ Ts*sign(Vel) };
         Applied = applied;
-        Fnet = applied - Friction;
+        Fnet = applied - FrictionDir * (SFriction + KFriction);
         Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
         NetAcc = Fnet / Mass;
     }
 
     Force Component::ClampForceByPosLimits(Force force) const
     {
-        if (force > 0.0 && Pos >= LimitMax) return Force::Zero;
-        if (force < 0.0 && Pos <= LimitMin) return Force::Zero;
+        if (FrictionDir >= 0.0)
+        {
+            if (force > 0.0 && Pos >= LimitMax) return Force::Zero;
+            if (force < 0.0 && Pos <= LimitMin) return Force::Zero;
+        }
+        else
+        {
+            if (force < 0.0 && Pos >= LimitMax) return Force::Zero;
+            if (force > 0.0 && Pos <= LimitMin) return Force::Zero;
+        }
         return force;
     }
 

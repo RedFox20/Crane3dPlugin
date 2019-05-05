@@ -91,7 +91,7 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Model->Line.LimitMax = LineLimitMax / 100.0f;
 
     using crane3d::Force;
-    crane3d::ModelState state = Model->UpdateFixed(1.0/1000.0, DeltaTime, Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
+    crane3d::ModelState state = Model->UpdateFixed(1.0/2000.0, DeltaTime, Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
     UpdateVisibleFields(state);
 
     // reset all forces for this frame
