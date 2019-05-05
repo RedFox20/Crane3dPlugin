@@ -38,6 +38,8 @@ namespace crane3d
         Rail.VelMax = VelocityMax;
         Cart.VelMax = VelocityMax;
         Line.VelMax = VelocityMax;
+        Alfa.VelMax = VelocityMax;
+        Beta.VelMax = VelocityMax;
 
         if (Type == ModelType::Linear)
         {
