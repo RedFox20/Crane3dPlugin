@@ -38,8 +38,14 @@ namespace crane3d
         Rail.VelMax = VelocityMax;
         Cart.VelMax = VelocityMax;
         Line.VelMax = VelocityMax;
-        Alfa.VelMax = VelocityMax;
-        Beta.VelMax = VelocityMax;
+        Alfa.VelMax = VelocityMax*2;
+        Beta.VelMax = VelocityMax*2;
+
+        Rail.AccMax = AccelMax;
+        Cart.AccMax = AccelMax;
+        Line.AccMax = AccelMax;
+        Alfa.AccMax = AccelMax*2;
+        Beta.AccMax = AccelMax*2;
 
         if (Type == ModelType::Linear)
         {
@@ -168,6 +174,7 @@ namespace crane3d
     ModelState Model::Update(double deltaTime, Force Frail, Force Fcart, Force Fwind)
     {
         ++DiscreteStepCounter;
+        PrepareBasicRelations(Frail, Fcart, Fwind);
         switch (Type)
         {
             default:
@@ -219,16 +226,14 @@ namespace crane3d
     // This simplified model assumes that α and β are very small
     void Model::BasicLinearModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        PrepareBasicRelations(Frail, Fcart, Fwind);
-
         // calculate new force driven accelerations
         double R = Line.Pos;
         Accel aX = Rail.NetAcc + μ2 * Beta.Pos * Line.NetAcc;
         Accel aY = Cart.NetAcc - μ1 * Alfa.Pos * Line.NetAcc;
         Accel aR = g - Line.NetAcc;
-        double line_vel = integrate_velocity(0.0, aR, dt);
-        Accel aA =  (aY - g*Alfa.Pos - 2*Alfa.Vel*line_vel) / R;
-        Accel aB = -(aX + g*Beta.Pos + 2*Beta.Vel*line_vel) / R;
+        double lineVel = integrate_velocity(0, aR, dt);
+        Accel aA =  (aY - g*Alfa.Pos - 2*Alfa.Vel*lineVel) / R;
+        Accel aB = -(aX + g*Beta.Pos + 2*Beta.Vel*lineVel) / R;
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
@@ -242,11 +247,9 @@ namespace crane3d
 
     void Model::NonLinearConstLine(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        PrepareBasicRelations(Frail, Fcart, Fwind);
-
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
-        double sA2 = sA*sA; double sB2 = sB*sB; double cA2 = cA*cA;
+        double sA2 = sA*sA, sB2 = sB*sB, cA2 = cA*cA;
 
         double A = 1 + μ1 * cA2 + μ2 * sA2*sB2;
         double B = 1 + μ1;
@@ -274,8 +277,6 @@ namespace crane3d
 
     void Model::NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        PrepareBasicRelations(Frail, Fcart, Fwind);
-
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
 
@@ -303,11 +304,9 @@ namespace crane3d
 
     void Model::NonLinearOriginalModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        PrepareBasicRelations(Frail, Fcart, Fwind);
-
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
-        double sA2 = sA*sA,   sB2 = sB*sB;
+        double sA2 = sA*sA, sB2 = sB*sB;
         double μ1cA = μ1*cA;
         double μ2sAsB = μ2*sA*sB;
         double βv2 = Beta.Vel*Beta.Vel;

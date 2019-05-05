@@ -16,7 +16,8 @@ namespace crane3d
         double Pos = 0.0;
         double LimitMin = 0.0;
         double LimitMax = 0.0;
-        double VelMax = 0.0; // no velocity limit by default
+        double VelMax = 0.0; // velocity limit, 0 = disabled
+        double AccMax = 0.0; // acceleration limit, 0 = disabled
         double Vel = 0.0;
         Accel Acc = 0_ms2; // actual acceleration
 

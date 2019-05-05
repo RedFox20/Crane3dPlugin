@@ -47,6 +47,9 @@ namespace crane3d
             if (VelMax > 0.0 && std::abs(Vel) > VelMax) {
                 Vel = sign(Vel) * VelMax;
             }
+            if (AccMax > 0.0 && abs(Acc) > AccMax) {
+                Acc = Accel{sign(Acc) * AccMax};
+            }
         }
         Acc = new_acc;
         //Vel = dampen(Vel); // dampen extremely small velocities
