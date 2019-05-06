@@ -35,9 +35,12 @@ namespace crane3d
 
     void Component::Update(Accel new_acc, double dt)
     {
+        //if (AccMax > 0.0 && abs(new_acc) > AccMax) {
+        //    new_acc = Accel{sign(new_acc) * AccMax};
+        //}
         if (!Const)
         {
-            double newPos = Pos + Vel * dt + Acc.Value*(dt*dt*0.5);
+            double newPos = Pos + Vel * dt + new_acc.Value*(dt*dt*0.5);
             newPos = clamp(newPos, LimitMin, LimitMax);
 
             // since position can be clamped, we calculate avg velocity instead
@@ -46,9 +49,6 @@ namespace crane3d
 
             if (VelMax > 0.0 && std::abs(Vel) > VelMax) {
                 Vel = sign(Vel) * VelMax;
-            }
-            if (AccMax > 0.0 && abs(Acc) > AccMax) {
-                Acc = Accel{sign(Acc) * AccMax};
             }
         }
         Acc = new_acc;

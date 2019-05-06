@@ -76,7 +76,7 @@ namespace crane3d
 
         // Line component
         //   describes the length of the lift-line
-        Component Line { 0.5, +0.05, +0.90 };
+        Component Line { 0.5, +0.08, +0.90 };
 
         // Alfa component
         //   describes α angle between y axis (cart moving left-right) and the lift-line
