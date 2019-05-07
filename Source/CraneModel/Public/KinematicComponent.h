@@ -53,6 +53,8 @@ namespace crane3d
         // Apply driving forces
         void UpdateForce(Force applied, Accel g);
 
+        void UpdateForceNonLinear(Force applied, Accel g, double T, double Ts);
+
         // Prevent applying force when against frame
         Force ClampForceByPosLimits(Force force) const;
 

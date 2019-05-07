@@ -16,12 +16,12 @@ enum class ECraneModelType : uint8
     // The most basic crane model with minimum pendulum movement
     Linear,
         
-    // Non-linear model with constant pendulum length with 2 control forces.
-    // LiftLine (Fline) is ignored
-    NonLinearConstantLine,
-
     // Non-linear fully dynamic model with all 3 forces
     NonLinearComplete,
+
+    // Non-linear model with constant pendulum length with 2 control forces.
+    // LiftLine (Fline) is ignored
+    NonLinearConstLine,
 
     // Original non-linear fully dynamic model with all 3 forces and refined friction formulae
     NonLinearOriginal,
@@ -86,14 +86,6 @@ public:
     // Gravity constant (m/s^2)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
     float Gravity = 9.81f;
-
-    // @todo
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
-    float RailFriction = 100.0f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
-    float CartFriction = 82.0f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
-    float WindingFriction = 75.0f;
 
     // Min limit for the rail (cm)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")

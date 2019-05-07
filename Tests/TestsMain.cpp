@@ -37,12 +37,12 @@ int main()
 {
     test_friction();
 
-    Force Frail { 0.0 }; // force driving the rail
-    Force Fcart { -25.0 }; // force along the rail
-    Force Fwind { 0.0 }; // force winding the cable
+    Force Frail = 0_N;   // force driving the rail
+    Force Fcart = -25_N; // force driving the cart
+    Force Fwind = 0_N;   // force winding the cable
 
     Model model { ModelType::NonLinearOriginal };
-	ModelState state = model.UpdateFixed(0.01, 10.0, Frail, Fcart, Fwind);
+    ModelState state = model.UpdateFixed(0.01, 10.0, Frail, Fcart, Fwind);
 	state.Print();
 
     auto text = model.GetStateDebugText();

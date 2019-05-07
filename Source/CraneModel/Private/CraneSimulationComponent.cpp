@@ -79,10 +79,6 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Model->Mpayload = crane3d::Mass{PayloadMass};
     Model->g = crane3d::Accel{Gravity};
 
-    Model->RailFriction = RailFriction;
-    Model->CartFriction = CartFriction;
-    Model->WindingFriction = WindingFriction;
-
     Model->Rail.LimitMin = RailLimitMin / 100.0f;
     Model->Rail.LimitMax = RailLimitMax / 100.0f;
     Model->Cart.LimitMin = CartLimitMin / 100.0f;

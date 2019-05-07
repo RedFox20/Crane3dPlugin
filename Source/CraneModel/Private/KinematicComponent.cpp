@@ -57,6 +57,17 @@ namespace crane3d
         NetAcc = Fnet / Mass;
     }
 
+    void Component::UpdateForceNonLinear(Force applied, Accel g, double T, double Ts)
+    {
+        SFriction = Force{Ts} * sign(Vel);
+        KFriction = Force{T} * Vel;
+        Applied = applied;
+        Fnet = applied - FrictionDir * (SFriction + KFriction);
+        Fnet = dampen(Fnet);
+        Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
+        NetAcc = Fnet / Mass;
+    }
+
     Force Component::ClampForceByPosLimits(Force force) const
     {
         Force friction = FrictionDir*force;

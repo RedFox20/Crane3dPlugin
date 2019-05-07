@@ -16,12 +16,12 @@ namespace crane3d
         // The most basic crane model with minimum pendulum movement
         Linear,
 
+        // Non-linear fully dynamic model with all 3 forces
+        NonLinearComplete,
+
         // Non-linear model with constant pendulum length with 2 control forces.
         // LiftLine (Fwind) is ignored
         NonLinearConstLine,
-
-        // Non-linear fully dynamic model with all 3 forces
-        NonLinearComplete,
 
         // Original non-linear fully dynamic model with all 3 forces and refined friction formulae
         NonLinearOriginal,
@@ -34,9 +34,6 @@ namespace crane3d
      */
     struct ModelState
     {
-        double Alfa = 0.0; // α pendulum measured alfa angle
-        double Beta = 0.0; // β pendulum measured beta angle
-
         double RailOffset = 0.0; // Xw distance of the rail with the cart from the center of the construction frame
         double CartOffset = 0.0; // Yw distance of the cart from the center of the rail
         double LiftLine   = 0.0; // R lift-line length
@@ -58,16 +55,14 @@ namespace crane3d
     class Model
     {
     public:
-        /**
-         * NOTE: These are the customization parameters of the model
-         */
+        /** NOTE: These are the customization parameters of the model */
         Mass Mpayload = 1.000_kg; // Mc mass of the payload
         Mass Mcart    = 1.155_kg; // Mw mass of the cart
         Mass Mrail    = 2.200_kg; // Ms mass of the moving rail
         Accel g = 9.81_ms2; // gravity constant, 9.81m/s^2
 
         // Rail component
-        //   describes distance of the rail with the cart from the center of the construction frame
+        //   describes distance of the rail from the center of the frame
         Component Rail { 0.0, -0.30, +0.30 };
 
         // Cart component
@@ -79,12 +74,12 @@ namespace crane3d
         Component Line { 0.5, +0.08, +0.90 };
 
         // Alfa component
-        //   describes α angle between y axis (cart moving left-right) and the lift-line
+        //   describes α angle between y axis (cart left-right) and the lift-line
         Component Alfa { 0.0, -0.05, +0.05 }; // Alfa component
 
         // Beta component
-        //   describes β angle between negative direction on the z axis and the projection
-        //   of the lift-line onto the xz plane
+        //   describes β angle between negative direction on the z axis and
+        //   the projection of the lift-line onto the xz plane
         Component Beta { 0.0, -0.05, +0.05 };
 
         // Maximum crane component velocity for Rail, Cart, Line
@@ -92,10 +87,6 @@ namespace crane3d
 
         // Maximum crane component acceleration
         double AccelMax = 0.6; // m/s^2
-
-        double RailFriction = 100.0; // Tx rail friction
-        double CartFriction = 82.0;  // Ty cart friction
-        double WindingFriction = 75.0;  // Tr liftline winding friction 
 
     private:
 
@@ -112,6 +103,9 @@ namespace crane3d
 
     public:
 
+        /**
+         * Initialize model with a specific model type
+         */
         Model(ModelType type = ModelType::Linear);
 
         /**
@@ -129,23 +123,23 @@ namespace crane3d
         /**
          * Updates the model using a fixed time step
          * @param fixedTime Size of the fixed time step. For example 0.01
-         * @param deltaTime Time since last update
+         * @param elapsedTime Time since last update
          * @param Frail force driving the rail with cart (Fx)
          * @param Fcart force driving the cart along the rail (Fy)
          * @param Fwind force winding the lift-line (Fr)
          * @return New state of the crane model
          */
-        ModelState UpdateFixed(double fixedTime, double deltaTime, Force Frail, Force Fcart, Force Fwind);
+        ModelState UpdateFixed(double fixedTime, double elapsedTime, Force Frail, Force Fcart, Force Fwind);
 
         /**
          * Updates the model using deltaTime as the time step. This can be unstable if deltaTime varies.
-         * @param deltaTime Time since last update
+         * @param deltaTimeStep Fixed time step
          * @param Frail force driving the rail with cart (Fx)
          * @param Fcart force driving the cart along the rail (Fy)
          * @param Fwind force winding the lift-line (Fr)
          * @return New state of the crane model
          */
-        ModelState Update(double deltaTime, Force Frail, Force Fcart, Force Fwind);
+        void Update(double deltaTimeStep, Force Frail, Force Fcart, Force Fwind);
 
         /**
          * @return Current state of the crane:
@@ -157,8 +151,6 @@ namespace crane3d
 
     private:
 
-        void PrepareBasicRelations(Force Frail, Force Fcart, Force Fwind);
-        
         // ------------------
         
         void BasicLinearModel(double dt, Force Frail, Force Fcart, Force Fwind);
