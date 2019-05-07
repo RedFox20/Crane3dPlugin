@@ -35,46 +35,33 @@ namespace crane3d
 
     void Component::Update(Accel new_acc, double dt)
     {
-        //if (AccMax > 0.0 && abs(new_acc) > AccMax) {
-        //    new_acc = Accel{sign(new_acc) * AccMax};
-        //}
-        if (!Const)
-        {
-            double newPos = Pos + Vel * dt + new_acc.Value*(dt*dt*0.5);
-            newPos = clamp(newPos, LimitMin, LimitMax);
+        double newPos = Pos + Vel * dt + new_acc.Value*(dt*dt*0.5);
+        newPos = clamp(newPos, LimitMin, LimitMax);
 
-            // since position can be clamped, we calculate avg velocity instead
-            Vel = average_velocity(Pos, newPos, dt);
-            Pos = newPos;
+        // since position can be clamped, we calculate avg velocity instead
+        Vel = average_velocity(Pos, newPos, dt);
+        Pos = newPos;
 
-            if (VelMax > 0.0 && std::abs(Vel) > VelMax) {
-                Vel = sign(Vel) * VelMax;
-            }
+        if (VelMax > 0.0 && std::abs(Vel) > VelMax) {
+            Vel = sign(Vel) * VelMax;
         }
         Acc = new_acc;
-        //Vel = dampen(Vel); // dampen extremely small velocities
     }
 
-    void Component::ApplyForce(Force applied, Accel g)
+    void Component::UpdateForce(Force applied, Accel g)
     {
-        Force Fnormal = Mass * g; // normal force between body and surface
-        SFriction = Force::Zero;
-        KFriction = Force::Zero;
-        if (std::abs(Vel) < 0.001) // static friction
+        SFriction = 0_N;
+        KFriction = 0_N;
+        if (std::abs(Vel) < 0.001)
         {
-            Force staticMax = CoeffStatic * Fnormal;
-            if (abs(applied) > staticMax) // resist up to max static friction
-                SFriction = sign(applied) * (abs(applied) - staticMax);
-            else
-                SFriction = applied; // cancel out applied force
+            Force Fc = CoeffStatic * (Mass * g);
+            Force F = abs(applied) < Fc ? applied : Fc;
+            SFriction = sign(applied) * F;
         }
         else
         {
-            KFriction = sign(Vel) * CoeffKinetic * Fnormal;
+            KFriction = sign(Vel) * CoeffKinetic * (Mass * g);
         }
-
-        // @note Fnet positive: driving dominates
-        // @note Fnet negative: friction dominates
         Applied = applied;
         Fnet = applied - FrictionDir * (SFriction + KFriction);
         Fnet = dampen(Fnet);
@@ -82,8 +69,9 @@ namespace crane3d
         NetAcc = Fnet / Mass;
     }
 
-    void Component::ApplyForceNonLinear(Force applied, Accel g, double T, double Ts)
+    void Component::UpdateForceNonLinear(Force applied, Accel g, double T, double Ts)
     {
+        // TODO: this looks like Integrated Coloumb and Viscous model
         SFriction = Force{ Vel*T };
         KFriction = Force{ Ts*sign(Vel) };
         Applied = applied;
@@ -94,16 +82,9 @@ namespace crane3d
 
     Force Component::ClampForceByPosLimits(Force force) const
     {
-        if (FrictionDir >= 0.0)
-        {
-            if (force > 0.0 && Pos >= LimitMax) return Force::Zero;
-            if (force < 0.0 && Pos <= LimitMin) return Force::Zero;
-        }
-        else
-        {
-            if (force < 0.0 && Pos >= LimitMax) return Force::Zero;
-            if (force > 0.0 && Pos <= LimitMin) return Force::Zero;
-        }
+        Force friction = FrictionDir*force;
+        if (friction > 0.0 && Pos >= LimitMax) return Force::Zero;
+        if (friction < 0.0 && Pos <= LimitMin) return Force::Zero;
         return force;
     }
 

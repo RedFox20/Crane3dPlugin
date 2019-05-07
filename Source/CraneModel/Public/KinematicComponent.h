@@ -12,26 +12,26 @@ namespace crane3d
      */
     struct Component
     {
-        Mass Mass = 1_kg;
-        double Pos = 0.0;
+        // base properties:
+        Mass Mass = 1_kg;  // mass
+        double Pos = 0.0;  // current position within limits
+        double Vel = 0.0;  // instantaneous velocity
+        Accel Acc = 0_ms2; // instantaneous acceleration
+
+        // limits:
         double LimitMin = 0.0;
         double LimitMax = 0.0;
         double VelMax = 0.0; // velocity limit, 0 = disabled
         double AccMax = 0.0; // acceleration limit, 0 = disabled
-        double Vel = 0.0;
-        Accel Acc = 0_ms2; // actual acceleration
 
-        Force Applied; // applied force
+        // driving forces:
+        Force Applied;   // applied / driving force
         Force SFriction; // static friction
         Force KFriction; // kinematic friction
-        Force Fnet; // net force
-        Accel NetAcc; // net driving acceleration
-
+        Force Fnet;      // net force
+        Accel NetAcc;    // net driving acceleration
 
         double FrictionDir = 1.0;
-
-        // If true, this component's `Pos` will not be changed during Update.
-        bool Const = false;
 
         // friction coefficient for Steel-Steel (depends highly on type of steel)
         // https://hypertextbook.com/facts/2005/steel.shtml
@@ -51,8 +51,8 @@ namespace crane3d
         void Update(Accel new_acc, double dt);
         
         // Apply driving forces
-        void ApplyForce(Force applied, Accel g);
-        void ApplyForceNonLinear(Force applied, Accel g, double T, double Ts);
+        void UpdateForce(Force applied, Accel g);
+        void UpdateForceNonLinear(Force applied, Accel g, double T, double Ts);
 
         // Prevent applying force when against frame
         Force ClampForceByPosLimits(Force force) const;

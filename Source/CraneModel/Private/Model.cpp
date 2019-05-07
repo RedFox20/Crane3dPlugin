@@ -208,16 +208,16 @@ namespace crane3d
 
         if (Type == ModelType::Linear)
         {
-            Rail.ApplyForce(Frail, g);
-            Cart.ApplyForce(Fcart, g);
-            Line.ApplyForce(Fwind, g);
+            Rail.UpdateForce(Frail, g);
+            Cart.UpdateForce(Fcart, g);
+            Line.UpdateForce(Fwind, g);
         }
         else
         {
             double Tsx = 5.0, Tsy = 7.5, Tsz = 10.0;
-            Rail.ApplyForceNonLinear(Frail, g, RailFriction, Tsx);
-            Cart.ApplyForceNonLinear(Fcart, g, CartFriction, Tsy);
-            Line.ApplyForceNonLinear(Fwind, g, WindingFriction, Tsz);
+            Rail.UpdateForceNonLinear(Frail, g, RailFriction, Tsx);
+            Cart.UpdateForceNonLinear(Fcart, g, CartFriction, Tsy);
+            Line.UpdateForceNonLinear(Fwind, g, WindingFriction, Tsz);
         }
     }
 
@@ -237,10 +237,11 @@ namespace crane3d
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
-        Line.Const = (Fwind == 0.0);
-        Line.Update(aR, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
+
+        if (Fwind != 0.0)
+            Line.Update(aR, dt);
     }
 
     //////////////////////////////////////////////////////////////////////

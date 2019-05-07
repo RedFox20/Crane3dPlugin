@@ -14,6 +14,7 @@ namespace crane3d
         Unit operator+(Unit b) const { return { Value + b.Value }; }
         Unit operator-(Unit b) const { return { Value - b.Value }; }
         bool operator>(Unit b) const { return Value > b.Value; }
+        bool operator<(Unit b) const { return Value < b.Value; }
         Unit operator+(double x) const { return { Value + x }; }
         Unit operator-(double x) const { return { Value - x }; }
         Unit operator*(double x) const { return { Value * x }; }
@@ -21,6 +22,7 @@ namespace crane3d
         bool operator>(double b) const { return Value > b; }
         bool operator<(double b) const { return Value < b; }
         bool operator==(double b) const { return Value == b; }
+        bool operator!=(double b) const { return Value != b; }
         double operator/(Unit b) const { return Value / b.Value; }
         Unit operator-() const { return { -Value }; }
     };
@@ -34,7 +36,6 @@ namespace crane3d
     inline double sign(double x) { return x > 0 ? 1.0 : (x < 0 ? -1.0 : 0.0); }
     template<class T> inline double sign(Unit<T> x) { return sign(x.Value); }
     template<class T> inline Unit<T> abs(Unit<T> x) { return { std::abs(x.Value) }; }
-
     template<class T> inline Unit<T> operator*(double x, Unit<T> u) { return { x * u.Value }; }
     template<class T> inline bool operator>(double x, Unit<T> u) { return x > u.Value; }
 
