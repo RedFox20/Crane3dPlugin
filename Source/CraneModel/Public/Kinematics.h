@@ -1,6 +1,7 @@
 // Copyright (c) 2019 - Jorma Rebane Crane3D
 // Distributed under MIT License
 #pragma once
+#include <cmath>
 
 namespace crane3d
 {

@@ -55,6 +55,9 @@ namespace crane3d
 
         // Prevent applying force when against frame
         Force ClampForceByPosLimits(Force force) const;
+
+        // Prevent applying acceleration when against frame
+        Accel ClampAccelByPosLimits(Accel accel) const;
     };
 
     //////////////////////////////////////////////////////////////////////

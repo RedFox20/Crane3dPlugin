@@ -13,7 +13,11 @@ namespace crane3d
 
     // time between each discrete step of the simulation
     static constexpr double _PI = 3.14159265358979323846;
-    static constexpr double _90degs = (_PI / 2);
+    static constexpr double _180degs = _PI;
+    static constexpr double _90degs = (_180degs / 2);
+    static constexpr double _60degs = _180degs/3.0;
+    static constexpr double _45degs = _180degs/4.0;
+    static constexpr double _30degs = _180degs/6.0;
 
     //////////////////////////////////////////////////////////////////////
     
@@ -38,26 +42,27 @@ namespace crane3d
         Rail.VelMax = VelocityMax;
         Cart.VelMax = VelocityMax;
         Line.VelMax = VelocityMax;
-        Alfa.VelMax = VelocityMax*2;
-        Beta.VelMax = VelocityMax*2;
+        //Alfa.VelMax = VelocityMax*2;
+        //Beta.VelMax = VelocityMax*2;
 
         Rail.AccMax = AccelMax;
         Cart.AccMax = AccelMax;
         Line.AccMax = AccelMax;
-        Alfa.AccMax = AccelMax*2;
-        Beta.AccMax = AccelMax*2;
+        //Alfa.AccMax = AccelMax*2;
+        //Beta.AccMax = AccelMax*2;
 
         if (Type == ModelType::Linear)
         {
-            Alfa.SetLimits(-0.05, 0.05);
-            Beta.SetLimits(-0.05, 0.05);
+            Alfa.SetLimits(-0.1, +0.1);
+            Beta.SetLimits(-0.1, +0.1);
         }
         else
         {
             // Invert the alfa angle as required by non-linear models
             Alfa.Pos = _90degs;
-            Alfa.SetLimits(0, _PI);
-            Beta.SetLimits(-_90degs, _90degs);
+            // the crane cannot physically swing more than X degrees due to cart edges
+            Alfa.SetLimits(_45degs, _180degs - _45degs);
+            Beta.SetLimits(-_45degs, _45degs);
         }
     }
 
@@ -129,8 +134,8 @@ namespace crane3d
         format(ss, L"  pos %+6.2f, %+6.2f, %+6.2f \n", state.PayloadX, state.PayloadY, state.PayloadZ);
         format(ss, L"  XYR %+6.2f, %+6.2f, %+6.2f \n", state.RailOffset, state.CartOffset, state.LiftLine);
         format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s \n", Rail.Vel, Cart.Vel, Line.Vel);
-        format(ss, L"  α  %+6.2f v %+6.2f rad/s \n", Alfa.Pos, Alfa.Vel);
-        format(ss, L"  β  %+6.2f v %+6.2f rad/s \n", Beta.Pos, Beta.Vel);
+        format(ss, L"  α  %+6.2f  vα %+6.2f rad/s  aα %+6.2f rad/s^2 \n", Alfa.Pos, Alfa.Vel, Alfa.Acc.Value);
+        format(ss, L"  β  %+6.2f  vβ %+6.2f rad/s  aβ %+6.2f rad/s^2 \n", Beta.Pos, Beta.Vel, Beta.Acc.Value);
         auto printComponent = [&](const char* which, const Component& c) {
             format(ss, L"  %hs a %+6.2f m/s², Fnet %+5.1f, Fapp %+5.1f, Fst %+5.1f, Fki %+5.1f \n",
                 which, c.Acc.Value, c.Fnet.Value, c.Applied.Value, c.SFriction.Value, c.KFriction.Value);
@@ -227,7 +232,6 @@ namespace crane3d
         Cart.Update(aY, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
-
         if (Fwind != 0.0)
             Line.Update(aR, dt);
     }
@@ -264,7 +268,6 @@ namespace crane3d
         Cart.Update(aY, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
-
         if (Fwind != 0.0)
             Line.Update(Line.NetAcc - g, dt);
     }
@@ -297,7 +300,6 @@ namespace crane3d
         Cart.Update(aY, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
-        
         if (Fwind != 0.0)
             Line.Update(aR, dt);
     }
@@ -325,43 +327,39 @@ namespace crane3d
         Accel AFrrail = Force{RailFriction} / (Mcart + Mpayload); // T2 = Tx / (Mw + Mc) | rail friction accel
         Accel AFrcart = Force{CartFriction} / Mcart;              // T1 = Ty / Mw        | cart friction accel
         Accel AFrwind = Force{WindingFriction} / Mpayload;        // T3 = Tr / Mc        | line winding friction accel
-
         Accel Tsx = Force{5.0} / (Mcart + Mrail); // 1.490
         Accel Tsy = Force{7.5} / Mcart; // 6.493
         Accel Tsz = Force{10.} / Mpayload; // 10
+
         Accel railFr = (Rail.Vel * AFrrail + Tsx * sign(Rail.Vel)); // some sort of rail friction accel
         Accel cartFr = (Cart.Vel * AFrcart + Tsy * sign(Cart.Vel)); // some sort of cart friction accel
         Accel windFr = -(Line.Vel * AFrwind + Tsz * sign(Line.Vel)); // NET winding accel
         Accel RailNetAcc = ADrrail - railFr; // N2 = rail net accel
         Accel CartNetAcc = ADrcart - cartFr; // N1 = cart net accel
         Accel WindNetAcc = ADrwind - windFr; // N3 = line net accel
+        RailNetAcc = Rail.ClampAccelByPosLimits(RailNetAcc);
+        CartNetAcc = Cart.ClampAccelByPosLimits(CartNetAcc);
+        WindNetAcc = Line.ClampAccelByPosLimits(WindNetAcc);
 
-        Accel aX = ADrrail - railFr + μ2sAsB*ADrwind - μ2sAsB*windFr;
-        Accel aY = ADrcart - cartFr + μ1cA*ADrwind - μ1cA*windFr;
-        Accel aA = (-cartFr*sA
-            + ADrcart * sA + cA*R * sA*βv2 - cA*ADrrail * sB + cA*cB*g
-            - cA*μ2sAsB*sB*ADrwind + cA*μ2sAsB*sB*windFr + cA*railFr*sB
-            + μ1cA*ADrwind * sA - μ1cA*windFr*sA - 2 * Line.Vel * Alfa.Vel
+        Accel aX = RailNetAcc + WindNetAcc*μ2sAsB;
+        Accel aY = CartNetAcc + WindNetAcc*μ1cA;
+        Accel aA = (CartNetAcc*sA + R*cA*sA*βv2 + cA*cB*g
+            - WindNetAcc*cA*μ2sAsB*sB - RailNetAcc*cA*sB
+            + WindNetAcc*μ1cA*sA - 2*Line.Vel*Alfa.Vel
             ) / R;
         Accel aB = -(
-            cB*ADrrail + g*sB + 2*R * cA*Alfa.Vel*Beta.Vel
-            + cB*μ2sAsB*ADrwind - cB*μ2sAsB*windFr
-            + 2 * Line.Vel * sA*Beta.Vel - cB*railFr
-            ) / (R*sA);
-        Accel aR = cA*cartFr - cA*ADrcart
-            + R * sA2*βv2 - ADrrail * sA*sB
-            + sA*cB*g
-            - μ2sAsB*sA*sB*ADrwind + μ2sAsB*sA*sB*windFr
-            + railFr*sA*sB
-            - μ1*ADrwind + μ1*ADrwind*sA2
-            + μ1 * windFr - μ1 * windFr*sA2
-            + R * Alfa.Vel * Alfa.Vel - ADrwind + windFr;
+            cB*RailNetAcc + g*sB + 2*R*cA*Alfa.Vel*Beta.Vel
+            + cB*μ2sAsB*WindNetAcc + 2*Line.Vel*sA*Beta.Vel) / (R*sA);
+        Accel aR = -cA*CartNetAcc
+            + R*sA2*βv2 - RailNetAcc*sA*sB
+            + sA*cB*g - μ2sAsB*sA*sB*CartNetAcc
+            - WindNetAcc*μ1 + WindNetAcc*μ1*sA2
+            + R*Alfa.Vel*Alfa.Vel - WindNetAcc;
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
-
         if (Fwind != 0.0)
             Line.Update(aR, dt);
     }
