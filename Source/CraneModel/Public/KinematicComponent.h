@@ -49,10 +49,9 @@ namespace crane3d
 
         // Update pos and vel using "Velocity Verlet" integration
         void Update(Accel new_acc, double dt);
-        
+
         // Apply driving forces
         void UpdateForce(Force applied, Accel g);
-        void UpdateForceNonLinear(Force applied, Accel g, double T, double Ts);
 
         // Prevent applying force when against frame
         Force ClampForceByPosLimits(Force force) const;

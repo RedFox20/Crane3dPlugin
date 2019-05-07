@@ -7,25 +7,6 @@ namespace crane3d
 {
     //////////////////////////////////////////////////////////////////////
 
-    constexpr double clamp(double x, double min, double max)
-    {
-        if (x <= min) return min;
-        if (x >= max) return max;
-        return x;
-    }
-
-    // dampens values that are very close to 0.0
-    static double dampen(double x)
-    {
-        return std::abs(x) < 0.001 ? 0.0 : x;
-    }
-    static Force dampen(Force force)
-    {
-        return { std::abs(force.Value) < 0.001 ? 0.0 : force.Value };
-    }
-
-    //////////////////////////////////////////////////////////////////////
-
     void Component::Reset()
     {
         Pos = Vel = 0.0;
@@ -33,19 +14,26 @@ namespace crane3d
         Applied = SFriction = KFriction = Fnet = Force::Zero;
     }
 
-    void Component::Update(Accel new_acc, double dt)
+    void Component::Update(Accel newAcc, double dt)
     {
-        double newPos = Pos + Vel * dt + new_acc.Value*(dt*dt*0.5);
-        newPos = clamp(newPos, LimitMin, LimitMax);
-
-        // since position can be clamped, we calculate avg velocity instead
-        Vel = average_velocity(Pos, newPos, dt);
-        Pos = newPos;
-
-        if (VelMax > 0.0 && std::abs(Vel) > VelMax) {
-            Vel = sign(Vel) * VelMax;
+        double newPos = integrate_verlet_pos(Pos, Vel, Acc, dt);
+        double newVel;
+        if (inside_limits(newPos, LimitMin, LimitMax))
+        {
+            newVel = integrate_verlet_vel(Vel, Acc, newAcc, dt);
         }
-        Acc = new_acc;
+        else // pos must be clamped, use Vavg
+        {
+            newPos = clamp(newPos, LimitMin, LimitMax);
+            newVel = average_velocity(Pos, newPos, dt);
+        }
+
+        if (VelMax > 0.0 && std::abs(newVel) > VelMax) {
+            newVel = sign(newVel) * VelMax;
+        }
+        Pos = newPos;
+        Vel = newVel;
+        Acc = newAcc;
     }
 
     void Component::UpdateForce(Force applied, Accel g)
@@ -65,17 +53,6 @@ namespace crane3d
         Applied = applied;
         Fnet = applied - FrictionDir * (SFriction + KFriction);
         Fnet = dampen(Fnet);
-        Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
-        NetAcc = Fnet / Mass;
-    }
-
-    void Component::UpdateForceNonLinear(Force applied, Accel g, double T, double Ts)
-    {
-        // TODO: this looks like Integrated Coloumb and Viscous model
-        SFriction = Force{ Vel*T };
-        KFriction = Force{ Ts*sign(Vel) };
-        Applied = applied;
-        Fnet = applied - FrictionDir * (SFriction + KFriction);
         Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
         NetAcc = Fnet / Mass;
     }

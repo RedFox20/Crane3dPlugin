@@ -128,11 +128,11 @@ namespace crane3d
         format(ss, L"Model: %hs \n", ToString(Type));
         format(ss, L"  pos %+6.2f, %+6.2f, %+6.2f \n", state.PayloadX, state.PayloadY, state.PayloadZ);
         format(ss, L"  XYR %+6.2f, %+6.2f, %+6.2f \n", state.RailOffset, state.CartOffset, state.LiftLine);
-        format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s\n", Rail.Vel, Cart.Vel, Line.Vel);
+        format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s \n", Rail.Vel, Cart.Vel, Line.Vel);
         format(ss, L"  α  %+6.2f v %+6.2f rad/s \n", Alfa.Pos, Alfa.Vel);
         format(ss, L"  β  %+6.2f v %+6.2f rad/s \n", Beta.Pos, Beta.Vel);
         auto printComponent = [&](const char* which, const Component& c) {
-            format(ss, L"  %hs a %+6.2f m/s², Fdrv %+5.1f, Fapp %+5.1f, Fst %+5.1f, Fki %+5.1f \n",
+            format(ss, L"  %hs a %+6.2f m/s², Fnet %+5.1f, Fapp %+5.1f, Fst %+5.1f, Fki %+5.1f \n",
                 which, c.Acc.Value, c.Fnet.Value, c.Applied.Value, c.SFriction.Value, c.KFriction.Value);
         };
         printComponent("Rail", Rail);
@@ -194,9 +194,7 @@ namespace crane3d
 
     void Model::PrepareBasicRelations(Force Frail, Force Fcart, Force Fwind)
     {
-        // prepare basic relations
-        // we recalculate every frame to allow dynamically changing the model parameters
-
+        // recalculate every frame to allow dynamically changing the model parameters
         // these are cable driven tension/friction coefficients:
         μ1 = Mpayload / Mcart;           // μ1 = Mc / Mw
         μ2 = Mpayload / (Mcart + Mrail); // μ2 = Mc / (Mw + Ms)
@@ -205,20 +203,6 @@ namespace crane3d
         Rail.Mass = Mrail+Mcart;
         Cart.Mass = Mcart;
         Line.Mass = Mpayload;
-
-        if (Type == ModelType::Linear)
-        {
-            Rail.UpdateForce(Frail, g);
-            Cart.UpdateForce(Fcart, g);
-            Line.UpdateForce(Fwind, g);
-        }
-        else
-        {
-            double Tsx = 5.0, Tsy = 7.5, Tsz = 10.0;
-            Rail.UpdateForceNonLinear(Frail, g, RailFriction, Tsx);
-            Cart.UpdateForceNonLinear(Fcart, g, CartFriction, Tsy);
-            Line.UpdateForceNonLinear(Fwind, g, WindingFriction, Tsz);
-        }
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -226,14 +210,18 @@ namespace crane3d
     // This simplified model assumes that α and β are very small
     void Model::BasicLinearModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        // calculate new force driven accelerations
-        double R = Line.Pos;
+        Rail.UpdateForce(Frail, g);
+        Cart.UpdateForce(Fcart, g);
+        Line.UpdateForce(Fwind, g);
+
+        // Calculate new force driven accelerations
         Accel aX = Rail.NetAcc + μ2 * Beta.Pos * Line.NetAcc;
         Accel aY = Cart.NetAcc - μ1 * Alfa.Pos * Line.NetAcc;
         Accel aR = g - Line.NetAcc;
-        double lineVel = integrate_velocity(0, aR, dt);
-        Accel aA =  (aY - g*Alfa.Pos - 2*Alfa.Vel*lineVel) / R;
-        Accel aB = -(aX + g*Beta.Pos + 2*Beta.Vel*lineVel) / R;
+        double R = Line.Pos;
+        double Rvel = integrate_euler_velocity(0, aR, dt);
+        Accel aA =  (aY - g*Alfa.Pos - 2*Alfa.Vel*Rvel) / R;
+        Accel aB = -(aX + g*Beta.Pos + 2*Beta.Vel*Rvel) / R;
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
@@ -248,13 +236,17 @@ namespace crane3d
 
     void Model::NonLinearConstLine(double dt, Force Frail, Force Fcart, Force Fwind)
     {
+        Rail.UpdateForce(Frail, g);
+        Cart.UpdateForce(Fcart, g);
+        Line.UpdateForce(Fwind, g);
+
+        double R = Line.Pos;
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
         double sA2 = sA*sA, sB2 = sB*sB, cA2 = cA*cA;
 
         double A = 1 + μ1 * cA2 + μ2 * sA2*sB2;
         double B = 1 + μ1;
-        double R = Line.Pos;
         double G = g.Value;
         double a2 = Alfa.Vel*Alfa.Vel;
         double b2 = Beta.Vel*Beta.Vel;
@@ -272,12 +264,19 @@ namespace crane3d
         Cart.Update(aY, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
+
+        if (Fwind != 0.0)
+            Line.Update(Line.NetAcc - g, dt);
     }
     
     //////////////////////////////////////////////////////////////////////
 
     void Model::NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
+        Rail.UpdateForce(Frail, g);
+        Cart.UpdateForce(Fcart, g);
+        Line.UpdateForce(Fwind, g);
+
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
 
@@ -296,9 +295,11 @@ namespace crane3d
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
-        Line.Update(aR, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
+        
+        if (Fwind != 0.0)
+            Line.Update(aR, dt);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -358,9 +359,11 @@ namespace crane3d
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
-        Line.Update(aR, dt);
         Alfa.Update(aA, dt);
         Beta.Update(aB, dt);
+
+        if (Fwind != 0.0)
+            Line.Update(aR, dt);
     }
 
     //////////////////////////////////////////////////////////////////////

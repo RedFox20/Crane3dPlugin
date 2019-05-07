@@ -71,30 +71,39 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
-    // compute new velocity:
+    // compute new velocity using Euler's method:
     // v' = v + a*dt
-    inline double integrate_velocity(double v0, Accel a, double dt)
+    inline double integrate_euler_velocity(double v0, Accel a, double dt)
     {
         return v0 + a.Value*dt;
     }
 
-    /**
-     * Compute a new position using "Velocity Verlet" integration
-     * https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet
-     * 1st form: x' = x + (2*v + a*dt)*dt*0.5  [new vel calculated before pos]
-     * 2nd form: x' = x + v*dt + (a*dt^2)*0.5  [pos calculated before new vel]
-     * @param x Previous position
-     * @param v Previous velocity
-     * @param a Current acceleration [assume const]
-     * @param dt DeltaTime / time step [eg: 0.01]
-     * @return New position x'
-     */
-    inline double integrate_pos(double x, double v, Accel a, double dt)
+    // compute new position using Euler's method:
+    // x' = x + v'*dt
+    inline double integrate_euler_pos(double x, double v1, double dt)
     {
-        // 1st form using average velocity, assuming constant acc
-        double vNew = v + a.Value*dt;
-        double vAvg = (v + vNew)*0.5;
-        return x + vAvg*dt;
+        return x + v1*dt;
+    }
+
+    // integrate position using Velocity Verlet method:
+    // x' = x + v*dt + (a*dt^2)/2
+    inline double integrate_verlet_pos(double x, double v, Accel a, double dt)
+    {
+        return x + v*dt + a.Value*dt*dt*0.5;
+    }
+
+    // integrate velocity using Velocity Verlet method:
+    // v' = v + (a0+a1)*0.5*dt
+    inline double integrate_verlet_vel(double v, Accel a0, Accel a1, double dt)
+    {
+        return v + (a0.Value + a1.Value)*0.5*dt;
+    }
+    
+    // calculate average velocity from position change
+    // v_avg = dx / dt
+    inline double average_velocity(double x1, double x2, double dt)
+    {
+        return (x2 - x1) / dt;
     }
 
     struct Body
@@ -146,10 +155,29 @@ namespace crane3d
         return pos + avg_vel*dt;
     }
 
-    // avg velocity = (x2 - x1) / (t2 - t1)
-    inline double average_velocity(double x1, double x2, double dt)
+    //////////////////////////////////////////////////////////////////////
+
+    inline double clamp(double x, double min, double max)
     {
-        return (x2 - x1) / dt;
+        if (x <= min) return min;
+        if (x >= max) return max;
+        return x;
+    }
+
+    // dampens values that are very close to 0.0
+    inline double dampen(double x)
+    {
+        return std::abs(x) < 0.001 ? 0.0 : x;
+    }
+
+    inline Force dampen(Force force)
+    {
+        return { std::abs(force.Value) < 0.001 ? 0.0 : force.Value };
+    }
+
+    inline bool inside_limits(double x, double min, double max)
+    {
+        return (min+0.01) < x && x < (max-0.01);
     }
 
     //////////////////////////////////////////////////////////////////////
