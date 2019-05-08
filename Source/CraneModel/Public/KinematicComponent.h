@@ -53,7 +53,7 @@ namespace crane3d
         // Apply driving forces
         void UpdateForceColoumb(Force applied, Accel g);
 
-        void UpdateForce(Force applied, Accel g, double T, double Ts);
+        void UpdateForce(Force applied, Accel g, double coloumbCoeff, double viscCoeff);
 
         // Prevent applying force when against frame
         Force ClampForceByPosLimits(Force force) const;

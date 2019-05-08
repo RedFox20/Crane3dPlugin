@@ -51,6 +51,7 @@ namespace crane3d
         {
             KFriction = sign(Vel) * CoeffKinetic * (Mass * g);
         }
+
         Applied = applied;
         Fnet = applied - FrictionDir * (SFriction + KFriction);
         Fnet = dampen(Fnet);
@@ -63,16 +64,17 @@ namespace crane3d
     // Kv - viscous friction coefficient
     // Simplified pre measured model:
     // F = f_c*sign(v) + f_v*v
-void Component::UpdateForce(Force applied, Accel g, double coloumbCoeff, double viscCoeff)
-{
-    SFriction = Force{coloumbCoeff} * sign(Vel);
-    KFriction = Force{viscCoeff} * Vel;
-    Applied = applied;
-    Fnet = applied - FrictionDir * (SFriction + KFriction);
-    Fnet = dampen(Fnet);
-    Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
-    NetAcc = Fnet / Mass;
-}
+    void Component::UpdateForce(Force applied, Accel g, double coloumbCoeff, double viscCoeff)
+    {
+        SFriction = Force{coloumbCoeff} * sign(Vel);
+        KFriction = Force{viscCoeff} * Vel;
+
+        Applied = applied;
+        Fnet = applied - FrictionDir * (SFriction + KFriction);
+        Fnet = dampen(Fnet);
+        Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
+        NetAcc = Fnet / Mass;
+    }
 
     Force Component::ClampForceByPosLimits(Force force) const
     {

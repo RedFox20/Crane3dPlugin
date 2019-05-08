@@ -88,6 +88,14 @@ namespace crane3d
         // Maximum crane component acceleration
         double AccelMax = 0.6; // m/s^2
 
+        double RailColoumbFriction = 5.0;
+        double CartColoumbFriction = 7.5;
+        double LineColoumbFriction = 10.0;
+        
+        double RailViscousFriction = 100.0;
+        double CartViscousFriction = 82.0;
+        double LineViscousFriction = 75.0;
+
     private:
 
         ModelType Type = ModelType::Linear;
