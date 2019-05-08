@@ -27,6 +27,7 @@ enum class ECraneModelType : uint8
     NonLinearOriginal,
 };
 
+
 /**
  * Adapts crane simulation and parameters as an actor component
  */
@@ -111,13 +112,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
     float LineLimitMax = 90;
 
-    // OUTPUT: X-offset of the rail (cm)
+    // OUTPUT: X-offset of the rail and Y-offset of the cart (cm)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crane Outputs")
-    float RailOffset;
-
-    // OUTPUT: Y-offset of the cart (cm)
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crane Outputs")
-    float CartOffset;
+    FVector CartPosition;
 
     // OUTPUT: Payload 3D position, offset to CenterComponent
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crane Outputs")
@@ -150,6 +147,8 @@ public:
 protected:
     void BeginPlay() override;
     void UpdateVisibleFields(const crane3d::ModelState& state);
+    void UpdateModelParameters();
+    void UpdateVisibleComponents();
 
 public:	
     void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

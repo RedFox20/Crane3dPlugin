@@ -52,8 +52,8 @@ void UCraneSimulationComponent::BeginPlay()
 void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::ModelState& state)
 {
     // UE4 is in centimeters, crane model is in meters
-    RailOffset = (float)(state.RailOffset * 100);
-    CartOffset = (float)(state.CartOffset * 100);
+    CartPosition.X = (float)(state.RailOffset * 100);
+    CartPosition.Y = (float)(state.CartOffset * 100);
     PayloadPosition = FVector{
         (float)(state.PayloadX * 100),
         (float)(state.PayloadY * 100),
@@ -66,10 +66,8 @@ void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::ModelState& s
     GEngine->AddOnScreenDebugMessage(4, 5.0f, FColor::Red, FString{text.c_str()});
 }
 
-void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UCraneSimulationComponent::UpdateModelParameters()
 {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
     // update model with parameters
     // we do this every frame to allow full dynamic tweaking of
     // the crane while the game is running
@@ -85,50 +83,51 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     Model->Cart.LimitMax = CartLimitMax / 100.0f;
     Model->Line.LimitMin = LineLimitMin / 100.0f;
     Model->Line.LimitMax = LineLimitMax / 100.0f;
+}
+
+void UCraneSimulationComponent::TickComponent(float DeltaTime,
+    ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    UpdateModelParameters();
 
     using crane3d::Force;
-    crane3d::ModelState state = Model->UpdateFixed(1.0/2000.0, DeltaTime, Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
+    crane3d::ModelState state = Model->UpdateFixed(1.0/2000.0, DeltaTime,
+                Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
+
     UpdateVisibleFields(state);
+    UpdateVisibleComponents();
 
-    // reset all forces for this frame
-    ForceRail = 0.0;
-    ForceCart = 0.0;
-    ForceWinding = 0.0;
+    // reset input forces for this frame
+    ForceRail = ForceCart = ForceWinding = 0.0;
+}
 
-    if (CenterComponent)
-    {
-        if (RailComponent)
-        {
-            FVector railPos = RailComponent->RelativeLocation;
-            railPos.X = RailOffset;
-            RailComponent->SetRelativeLocation(railPos);
-        }
+void UCraneSimulationComponent::UpdateVisibleComponents()
+{
+    if (!CenterComponent || !PayloadComponent || !CartComponent || !RailComponent)
+        return;
 
-        if (CartComponent)
-        {
-            FVector cartPos = RailComponent->RelativeLocation;
-            cartPos.X = RailOffset;
-            cartPos.Y = CartOffset;
-            CartComponent->SetRelativeLocation(cartPos);
-        }
+    FVector railPos = RailComponent->RelativeLocation;
+    FVector cartPos = RailComponent->RelativeLocation;
+    railPos.X = CartPosition.X;
+    cartPos.X = CartPosition.X;
+    cartPos.Y = CartPosition.Y;
+    RailComponent->SetRelativeLocation(railPos);
+    CartComponent->SetRelativeLocation(cartPos);
+    PayloadComponent->SetRelativeLocation(PayloadPosition);
 
-        if (PayloadComponent)
-        {
-            PayloadComponent->SetRelativeLocation(PayloadPosition);
+    // rotate the payload towards cart
+    FVector dir = CartComponent->GetComponentLocation()
+                - PayloadComponent->GetComponentLocation();
+    dir.Normalize();
+    FRotator rot = dir.Rotation();
+    rot.Pitch -= 90;
+    PayloadComponent->RelativeRotation = rot;
 
-            if (CartComponent)
-            {
-                FVector dir = CartComponent->GetComponentLocation() - PayloadComponent->GetComponentLocation();
-                dir.Normalize();
-                FRotator rot = dir.Rotation();
-                rot.Pitch -= 90;
-                PayloadComponent->RelativeRotation = rot;
-            }
-
-            // cable visualization (DEBUG)
-            DrawDebugLine(GetWorld(), CartComponent->GetComponentLocation(),
-                PayloadComponent->GetComponentLocation(), FColor(15, 15, 15), false, -1, 0, 1);
-        }
-    }
+    // cable line
+    DrawDebugLine(GetWorld(), CartComponent->GetComponentLocation(),
+        PayloadComponent->GetComponentLocation(),
+        FColor(15, 15, 15), false, -1, 0, 1);
 }
 
