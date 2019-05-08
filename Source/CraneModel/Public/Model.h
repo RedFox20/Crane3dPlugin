@@ -71,11 +71,11 @@ namespace crane3d
 
         // Line component
         //   describes the length of the lift-line
-        Component Line { 0.5, +0.15, +0.90 };
+        Component Line { 0.5, +0.16, +0.98 };
 
         // Alfa component
         //   describes α angle between y axis (cart left-right) and the lift-line
-        Component Alfa { 0.0, -0.05, +0.05 }; // Alfa component
+        Component Alfa { 0.0, -0.05, +0.05 };
 
         // Beta component
         //   describes β angle between negative direction on the z axis and
@@ -154,9 +154,6 @@ namespace crane3d
         // ------------------
         
         void BasicLinearModel(double dt, Force Frail, Force Fcart, Force Fwind);
-
-        // ------------------
-
         void NonLinearConstLine(double dt, Force Frail, Force Fcart, Force Fwind);
         void NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind);
         void NonLinearOriginalModel(double dt, Force Frail, Force Fcart, Force Fwind);

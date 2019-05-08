@@ -36,8 +36,6 @@ namespace crane3d
 
         Line.Pos = 0.5;
         Line.FrictionDir = -1.0;
-        Line.CoeffStatic = 0.3;
-        Line.CoeffKinetic = 0.2;
 
         Rail.VelMax = VelocityMax;
         Cart.VelMax = VelocityMax;
@@ -133,13 +131,13 @@ namespace crane3d
         format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s \n", Rail.Vel, Cart.Vel, Line.Vel);
         format(ss, L"  α  %+6.2f  vα %+6.2f rad/s  aα %+6.2f rad/s^2 \n", Alfa.Pos, Alfa.Vel, Alfa.Acc.Value);
         format(ss, L"  β  %+6.2f  vβ %+6.2f rad/s  aβ %+6.2f rad/s^2 \n", Beta.Pos, Beta.Vel, Beta.Acc.Value);
-        auto printComponent = [&](const char* which, const Component& c) {
+        auto formatComponent = [&](const char* which, const Component& c) {
             format(ss, L"  %hs a %+6.2f m/s², Fnet %+5.1f, Fapp %+5.1f, Fst %+5.1f, Fki %+5.1f \n",
                 which, c.Acc.Value, c.Fnet.Value, c.Applied.Value, c.SFriction.Value, c.KFriction.Value);
         };
-        printComponent("Rail", Rail);
-        printComponent("Cart", Cart);
-        printComponent("Line", Line);
+        formatComponent("Rail", Rail);
+        formatComponent("Cart", Cart);
+        formatComponent("Line", Line);
         format(ss, L"  iter# %5lld  dt %5.4f  iter/s %.1f \n", DiscreteStepCounter, DbgFixedTimeStep, DbgAvgIterations);
         return ss.str();
     }
@@ -308,7 +306,6 @@ namespace crane3d
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
         double sA2 = sA*sA, sB2 = sB*sB;
-        double μ1cA = μ1*cA;
         double μ2sAsB = μ2*sA*sB;
         double vB2 = Beta.Vel*Beta.Vel;
         double R = Line.Pos;
@@ -317,10 +314,10 @@ namespace crane3d
         double VB = 2*Beta.Vel*(R*Alfa.Vel*cA + Line.Vel*sA) + G*sB;
         double VR = R*vB2*sA2 + G*sA*cB + R*Alfa.Vel*Alfa.Vel;
 
-        Accel aX = Rail.NetAcc + Line.NetAcc*μ2sAsB;
-        Accel aY = Cart.NetAcc + Line.NetAcc*μ1cA;
+        Accel aX = Rail.NetAcc + Line.NetAcc*μ2*sA*sB;
+        Accel aY = Cart.NetAcc + Line.NetAcc*μ1*cA;
         Accel aA = (Cart.NetAcc*sA - Rail.NetAcc*cA*sB
-                    - Line.NetAcc*cA*μ2sAsB*sB + Line.NetAcc*μ1cA*sA + VA) / R;
+                    - Line.NetAcc*cA*sA*μ2*sB*sB + Line.NetAcc*cA*sA*μ1 + VA) / R;
         Accel aB = -(Rail.NetAcc*cB + g*sB + 2*R*cA*Alfa.Vel*Beta.Vel +
                        Line.NetAcc*cB*μ2sAsB + 2*sA*Line.Vel*Beta.Vel) / (R*sA);
         Accel aR = -Cart.NetAcc*cA - Rail.NetAcc*sA*sB

@@ -36,33 +36,7 @@ namespace crane3d
         Acc = newAcc;
     }
 
-    // TODO: This is not suitable for crane kinematics model
-    void Component::UpdateForceColoumb(Force applied, Accel g)
-    {
-        SFriction = 0_N;
-        KFriction = 0_N;
-        if (std::abs(Vel) < 0.001)
-        {
-            Force Fc = CoeffStatic * (Mass * g);
-            Force F = abs(applied) < Fc ? applied : Fc;
-            SFriction = sign(applied) * F;
-        }
-        else
-        {
-            KFriction = sign(Vel) * CoeffKinetic * (Mass * g);
-        }
-
-        Applied = applied;
-        Fnet = applied - FrictionDir * (SFriction + KFriction);
-        Fnet = dampen(Fnet);
-        Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
-        NetAcc = Fnet / Mass;
-    }
-
-    // Stribeck friction model:
-    // F = (Fc + (Fst - Fc)e^-(|v/vs|)^i)*sign(v) + Kv*v
-    // Kv - viscous friction coefficient
-    // Simplified pre measured model:
+    // Simplified Coloumb-Viscous friction model:
     // F = f_c*sign(v) + f_v*v
     void Component::UpdateForce(Force applied)
     {
@@ -82,14 +56,6 @@ namespace crane3d
         if (friction > 0.0 && Pos > (LimitMax-0.01)) return Force::Zero;
         if (friction < 0.0 && Pos < (LimitMin+0.01)) return Force::Zero;
         return force;
-    }
-
-    Accel Component::ClampAccelByPosLimits(Accel accel) const
-    {
-        Accel friction = FrictionDir*accel;
-        if (friction > 0.0 && Pos > (LimitMax-0.01)) return Accel::Zero;
-        if (friction < 0.0 && Pos < (LimitMin+0.01)) return Accel::Zero;
-        return accel;
     }
 
     //////////////////////////////////////////////////////////////////////

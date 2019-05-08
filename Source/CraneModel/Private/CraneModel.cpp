@@ -1,4 +1,5 @@
 // Copyright (c) 2019 - Jorma Rebane 3DCrane UE4
+// Distributed under MIT License
 #include "CraneModel.h"
 #include "Interfaces/IPluginManager.h"
 
