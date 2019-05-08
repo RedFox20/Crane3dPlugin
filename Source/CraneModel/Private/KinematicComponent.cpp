@@ -71,7 +71,7 @@ namespace crane3d
 
         Applied = applied;
         Fnet = applied - FrictionDir * (SFriction + KFriction);
-        Fnet = dampen(Fnet);
+        Fnet = dampen(Fnet); // removes sigma sized force flip-flopping
         Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
         NetAcc = Fnet / Mass;
     }

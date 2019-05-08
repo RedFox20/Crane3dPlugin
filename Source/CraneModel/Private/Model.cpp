@@ -314,8 +314,8 @@ namespace crane3d
         double R = Line.Pos;
         double G = g.Value;
         double VA = R*vB2*cA*sA - 2*Line.Vel*Alfa.Vel + G*cA*cB;
-        double V6 = 2 * Beta.Vel*(cA*Alfa.Vel*R + sA * Line.Vel) + G*sB;
-        double V7 = sA2*vB2*R + G*sA*cB + Alfa.Vel * Alfa.Vel*R;
+        double VB = 2*Beta.Vel*(R*Alfa.Vel*cA + Line.Vel*sA) + G*sB;
+        double VR = R*vB2*sA2 + G*sA*cB + R*Alfa.Vel*Alfa.Vel;
 
         Accel aX = Rail.NetAcc + Line.NetAcc*μ2sAsB;
         Accel aY = Cart.NetAcc + Line.NetAcc*μ1cA;
@@ -323,9 +323,9 @@ namespace crane3d
                     - Line.NetAcc*cA*μ2sAsB*sB + Line.NetAcc*μ1cA*sA + VA) / R;
         Accel aB = -(Rail.NetAcc*cB + g*sB + 2*R*cA*Alfa.Vel*Beta.Vel +
                        Line.NetAcc*cB*μ2sAsB + 2*sA*Line.Vel*Beta.Vel) / (R*sA);
-        Accel aR = -cA*Cart.NetAcc + R*sA2*vB2 - Rail.NetAcc*sA*sB
-                    + sA*cB*g - μ2sAsB*sA*sB*Cart.NetAcc - Line.NetAcc*μ1
-                    + Line.NetAcc*μ1*sA2 + R*Alfa.Vel*Alfa.Vel - Line.NetAcc;
+        Accel aR = -Cart.NetAcc*cA - Rail.NetAcc*sA*sB
+                     - μ2sAsB*sA*sB*Cart.NetAcc - Line.NetAcc*μ1
+                    + Line.NetAcc*μ1*sA2 - Line.NetAcc + VR;
 
         Rail.Update(aX, dt);
         Cart.Update(aY, dt);
