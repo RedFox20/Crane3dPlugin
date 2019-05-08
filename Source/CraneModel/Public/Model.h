@@ -71,7 +71,7 @@ namespace crane3d
 
         // Line component
         //   describes the length of the lift-line
-        Component Line { 0.5, +0.08, +0.90 };
+        Component Line { 0.5, +0.15, +0.90 };
 
         // Alfa component
         //   describes α angle between y axis (cart left-right) and the lift-line
@@ -82,19 +82,11 @@ namespace crane3d
         //   the projection of the lift-line onto the xz plane
         Component Beta { 0.0, -0.05, +0.05 };
 
-        // Maximum crane component velocity for Rail, Cart, Line
+        // Maximum Rail, Cart, Line component velocity
         double VelocityMax = 0.3; // m/s
 
-        // Maximum crane component acceleration
+        // Maximum Rail, Cart, Line component acceleration
         double AccelMax = 0.6; // m/s^2
-
-        double RailColoumbFriction = 5.0;
-        double CartColoumbFriction = 7.5;
-        double LineColoumbFriction = 10.0;
-        
-        double RailViscousFriction = 100.0;
-        double CartViscousFriction = 82.0;
-        double LineViscousFriction = 75.0;
 
     private:
 

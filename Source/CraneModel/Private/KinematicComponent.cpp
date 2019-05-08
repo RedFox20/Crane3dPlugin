@@ -64,10 +64,10 @@ namespace crane3d
     // Kv - viscous friction coefficient
     // Simplified pre measured model:
     // F = f_c*sign(v) + f_v*v
-    void Component::UpdateForce(Force applied, Accel g, double coloumbCoeff, double viscCoeff)
+    void Component::UpdateForce(Force applied)
     {
-        SFriction = Force{coloumbCoeff} * sign(Vel);
-        KFriction = Force{viscCoeff} * Vel;
+        SFriction = Force{CoeffStaticColoumb} * sign(Vel);
+        KFriction = Force{CoeffKineticViscous} * Vel;
 
         Applied = applied;
         Fnet = applied - FrictionDir * (SFriction + KFriction);

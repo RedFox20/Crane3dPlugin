@@ -42,14 +42,18 @@ namespace crane3d
         Rail.VelMax = VelocityMax;
         Cart.VelMax = VelocityMax;
         Line.VelMax = VelocityMax;
-        //Alfa.VelMax = VelocityMax*2;
-        //Beta.VelMax = VelocityMax*2;
 
         Rail.AccMax = AccelMax;
         Cart.AccMax = AccelMax;
         Line.AccMax = AccelMax;
-        //Alfa.AccMax = AccelMax*2;
-        //Beta.AccMax = AccelMax*2;
+
+        Rail.CoeffStaticColoumb = 5.0;
+        Cart.CoeffStaticColoumb = 7.5;
+        Line.CoeffStaticColoumb = 10.0;
+
+        Rail.CoeffKineticViscous = 100.0;
+        Cart.CoeffKineticViscous = 82.0;
+        Line.CoeffKineticViscous = 75.0;
 
         if (Type == ModelType::Linear)
         {
@@ -203,9 +207,9 @@ namespace crane3d
     // This simplified model assumes that α and β are very small
     void Model::BasicLinearModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail, g, 5.0, 100.0);
-        Cart.UpdateForce(Fcart, g, 7.5, 82.0);
-        Line.UpdateForce(Fwind, g, 10.0, 75.0);
+        Rail.UpdateForce(Frail);
+        Cart.UpdateForce(Fcart);
+        Line.UpdateForce(Fwind);
 
         double R = Line.Pos;
         Accel aX = Rail.NetAcc + Line.NetAcc*μ2*Beta.Pos;
@@ -227,9 +231,9 @@ namespace crane3d
 
     void Model::NonLinearConstLine(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail, g, RailColoumbFriction, RailViscousFriction);
-        Cart.UpdateForce(Fcart, g, CartColoumbFriction, CartViscousFriction);
-        Line.UpdateForce(Fwind, g, LineColoumbFriction, LineViscousFriction);
+        Rail.UpdateForce(Frail);
+        Cart.UpdateForce(Fcart);
+        Line.UpdateForce(Fwind);
 
         double R = Line.Pos;
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
@@ -263,9 +267,9 @@ namespace crane3d
 
     void Model::NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail, g, RailColoumbFriction, RailViscousFriction);
-        Cart.UpdateForce(Fcart, g, CartColoumbFriction, CartViscousFriction);
-        Line.UpdateForce(Fwind, g, LineColoumbFriction, LineViscousFriction);
+        Rail.UpdateForce(Frail);
+        Cart.UpdateForce(Fcart);
+        Line.UpdateForce(Fwind);
 
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
@@ -297,9 +301,9 @@ namespace crane3d
 
     void Model::NonLinearOriginalModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail, g, RailColoumbFriction, RailViscousFriction);
-        Cart.UpdateForce(Fcart, g, CartColoumbFriction, CartViscousFriction);
-        Line.UpdateForce(Fwind, g, LineColoumbFriction, LineViscousFriction);
+        Rail.UpdateForce(Frail);
+        Cart.UpdateForce(Fcart);
+        Line.UpdateForce(Fwind);
 
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
