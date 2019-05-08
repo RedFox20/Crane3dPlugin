@@ -203,9 +203,9 @@ namespace crane3d
     // This simplified model assumes that α and β are very small
     void Model::BasicLinearModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail, g);
-        Cart.UpdateForce(Fcart, g);
-        Line.UpdateForce(Fwind, g);
+        Rail.UpdateForce(Frail, g, 5.0, 100.0);
+        Cart.UpdateForce(Fcart, g, 7.5, 82.0);
+        Line.UpdateForce(Fwind, g, 10.0, 75.0);
 
         double R = Line.Pos;
         Accel aX = Rail.NetAcc + Line.NetAcc*μ2*Beta.Pos;
@@ -227,9 +227,9 @@ namespace crane3d
 
     void Model::NonLinearConstLine(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail, g);
-        Cart.UpdateForce(Fcart, g);
-        Line.UpdateForce(Fwind, g);
+        Rail.UpdateForce(Frail, g, 5.0, 100.0);
+        Cart.UpdateForce(Fcart, g, 7.5, 82.0);
+        Line.UpdateForce(Fwind, g, 10.0, 75.0);
 
         double R = Line.Pos;
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
@@ -263,9 +263,9 @@ namespace crane3d
 
     void Model::NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail, g);
-        Cart.UpdateForce(Fcart, g);
-        Line.UpdateForce(Fwind, g);
+        Rail.UpdateForce(Frail, g, 5.0, 100.0);
+        Cart.UpdateForce(Fcart, g, 7.5, 82.0);
+        Line.UpdateForce(Fwind, g, 10.0, 75.0);
 
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
@@ -297,9 +297,9 @@ namespace crane3d
 
     void Model::NonLinearOriginalModel(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForceNonLinear(Frail, g, 100.0, 5.0);
-        Cart.UpdateForceNonLinear(Fcart, g, 82.0, 7.5);
-        Line.UpdateForceNonLinear(Fwind, g, 75.0, 10.0);
+        Rail.UpdateForce(Frail, g, 5.0, 100.0);
+        Cart.UpdateForce(Fcart, g, 7.5, 82.0);
+        Line.UpdateForce(Fwind, g, 10.0, 75.0);
 
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);

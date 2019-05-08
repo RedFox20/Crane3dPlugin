@@ -36,7 +36,8 @@ namespace crane3d
         Acc = newAcc;
     }
 
-    void Component::UpdateForce(Force applied, Accel g)
+    // TODO: This is not suitable for crane kinematics model
+    void Component::UpdateForceColoumb(Force applied, Accel g)
     {
         SFriction = 0_N;
         KFriction = 0_N;
@@ -57,16 +58,21 @@ namespace crane3d
         NetAcc = Fnet / Mass;
     }
 
-    void Component::UpdateForceNonLinear(Force applied, Accel g, double T, double Ts)
-    {
-        SFriction = Force{Ts} * sign(Vel);
-        KFriction = Force{T} * Vel;
-        Applied = applied;
-        Fnet = applied - FrictionDir * (SFriction + KFriction);
-        Fnet = dampen(Fnet);
-        Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
-        NetAcc = Fnet / Mass;
-    }
+    // Stribeck friction model:
+    // F = (Fc + (Fst - Fc)e^-(|v/vs|)^i)*sign(v) + Kv*v
+    // Kv - viscous friction coefficient
+    // Simplified pre measured model:
+    // F = f_c*sign(v) + f_v*v
+void Component::UpdateForce(Force applied, Accel g, double coloumbCoeff, double viscCoeff)
+{
+    SFriction = Force{coloumbCoeff} * sign(Vel);
+    KFriction = Force{viscCoeff} * Vel;
+    Applied = applied;
+    Fnet = applied - FrictionDir * (SFriction + KFriction);
+    Fnet = dampen(Fnet);
+    Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
+    NetAcc = Fnet / Mass;
+}
 
     Force Component::ClampForceByPosLimits(Force force) const
     {
