@@ -42,7 +42,8 @@ int main()
     Force Fwind = 0_N;   // force winding the cable
 
     Model model { ModelType::NonLinearOriginal };
-    ModelState state = model.UpdateFixed(0.01, 10.0, Frail, Fcart, Fwind);
+    model.SetOutputCsv("Original_Y-25N_5s.csv");
+    ModelState state = model.UpdateFixed(0.001, 5.0, Frail, Fcart, Fwind);
 	state.Print();
 
     auto text = model.GetStateDebugText();

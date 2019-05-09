@@ -31,7 +31,6 @@ namespace crane3d
         Force Fnet;      // net driving force
         Accel NetAcc;    // net driving acceleration
 
-        // acc
         double FrictionDir = 1.0;
 
         // Coloumb-Viscous friction model

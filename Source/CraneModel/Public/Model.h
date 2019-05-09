@@ -3,6 +3,7 @@
 #pragma once
 #include "KinematicComponent.h"
 #include <string> // std::wstring
+#include <fstream> // std::ofstream
 
 namespace crane3d
 {
@@ -91,15 +92,16 @@ namespace crane3d
     private:
 
         ModelType Type = ModelType::Linear;
-        double μ1, μ2; // coefficient of friction: payload/cart ratio;  payload/railcart ratio
-
-        // simulation time sink for running correct number of iterations every update
-        double SimulationTimeSink = 0.0;
-        int64_t DiscreteStepCounter = 0;
+        double μ1, μ2; // coefficient of friction: payload/cart ratio; payload/railcart ratio
+        
+        double SimulationTimeSink = 0.0; // accumulator for running N iterations every update
+        int64_t DiscreteStepCounter = 0; // total number of discrete steps taken
+        double TotalSimulationTime = 0.0; // total simulation time elapsed
 
         // for debugging:
         double DbgFixedTimeStep = 0.0;
-        double DbgAvgIterations = 1.0; // for debugging
+        double DbgAvgIterations = 1.0;
+        std::unique_ptr<std::ofstream> DbgCsv; // CSV output file stream
 
     public:
 
@@ -119,6 +121,12 @@ namespace crane3d
         void SetType(ModelType type);
         ModelType GetType() const { return Type; }
 
+        /**
+         * Writes all simulation data points to a CSV file for later analysis
+         * Columns exported:
+         * t; X; Y; R; Alfa; Beta; pX; pY; pZ
+         */
+        void SetOutputCsv(const std::string& outCsvFile);
 
         /**
          * Updates the model using a fixed time step
@@ -129,10 +137,12 @@ namespace crane3d
          * @param Fwind force winding the lift-line (Fr)
          * @return New state of the crane model
          */
-        ModelState UpdateFixed(double fixedTime, double elapsedTime, Force Frail, Force Fcart, Force Fwind);
+        ModelState UpdateFixed(double fixedTime, double elapsedTime,
+                               Force Frail, Force Fcart, Force Fwind);
 
         /**
-         * Updates the model using deltaTime as the time step. This can be unstable if deltaTime varies.
+         * Updates the model using deltaTime as the time step.
+         * This can be unstable if deltaTime varies.
          * @param deltaTimeStep Fixed time step
          * @param Frail force driving the rail with cart (Fx)
          * @param Fcart force driving the cart along the rail (Fy)
@@ -147,11 +157,15 @@ namespace crane3d
          */
         ModelState GetState() const;
 
+        /**
+         * @return A full multi-line debug string with all dynamic variables shown
+         */
         std::wstring GetStateDebugText() const;
 
     private:
 
         // ------------------
+        void AppendStateToCsv();
         
         void BasicLinearModel(double dt, Force Frail, Force Fcart, Force Fwind);
         void NonLinearConstLine(double dt, Force Frail, Force Fcart, Force Fwind);

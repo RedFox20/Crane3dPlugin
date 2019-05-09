@@ -28,6 +28,10 @@ namespace crane3d
 
     void Model::Reset()
     {
+        SimulationTimeSink = 0.0;
+        DiscreteStepCounter = 0;
+        TotalSimulationTime = 0.0;
+
         Rail.Reset();
         Cart.Reset();
         Line.Reset();
@@ -74,6 +78,24 @@ namespace crane3d
             Type = type;
             Reset();
         }
+    }
+
+    void Model::SetOutputCsv(const std::string & outCsvFile)
+    {
+        DbgCsv = std::make_unique<std::ofstream>(outCsvFile);
+        std::locale mylocale(""); 
+        DbgCsv->imbue(mylocale);
+        *DbgCsv << "t; X; Y; R; Alfa; Beta; pX; pY; pZ\n";
+        AppendStateToCsv();
+    }
+    
+    void Model::AppendStateToCsv()
+    {
+        ModelState s = GetState(); s.Print();
+        *DbgCsv << TotalSimulationTime << "; " << Rail.Pos << "; "
+                << Cart.Pos   << "; " << Line.Pos   << "; "
+                << Alfa.Pos   << "; " << Beta.Pos   << "; "
+                << s.PayloadX << "; " << s.PayloadY << "; " << s.PayloadZ << "\n";
     }
 
     ModelState Model::GetState() const
@@ -126,11 +148,16 @@ namespace crane3d
         ModelState state = GetState();
         std::wstringstream ss;
         format(ss, L"Model: %hs \n", ToString(Type));
-        format(ss, L"  pos %+6.2f, %+6.2f, %+6.2f \n", state.PayloadX, state.PayloadY, state.PayloadZ);
-        format(ss, L"  XYR %+6.2f, %+6.2f, %+6.2f \n", state.RailOffset, state.CartOffset, state.LiftLine);
-        format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s \n", Rail.Vel, Cart.Vel, Line.Vel);
-        format(ss, L"  α  %+6.2f  vα %+6.2f rad/s  aα %+6.2f rad/s^2 \n", Alfa.Pos, Alfa.Vel, Alfa.Acc.Value);
-        format(ss, L"  β  %+6.2f  vβ %+6.2f rad/s  aβ %+6.2f rad/s^2 \n", Beta.Pos, Beta.Vel, Beta.Acc.Value);
+        format(ss, L"  pos %+6.2f, %+6.2f, %+6.2f \n",
+                    state.PayloadX, state.PayloadY, state.PayloadZ);
+        format(ss, L"  XYR %+6.2f, %+6.2f, %+6.2f \n",
+                    state.RailOffset, state.CartOffset, state.LiftLine);
+        format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s \n",
+                        Rail.Vel, Cart.Vel, Line.Vel);
+        format(ss, L"  α  %+6.2f  vα %+6.2f rad/s  aα %+6.2f rad/s^2 \n",
+                        Alfa.Pos, Alfa.Vel, Alfa.Acc.Value);
+        format(ss, L"  β  %+6.2f  vβ %+6.2f rad/s  aβ %+6.2f rad/s^2 \n",
+                        Beta.Pos, Beta.Vel, Beta.Acc.Value);
         auto formatComponent = [&](const char* which, const Component& c) {
             format(ss, L"  %hs a %+6.2f m/s², Fnet %+5.1f, Fapp %+5.1f, Fst %+5.1f, Fki %+5.1f \n",
                 which, c.Acc.Value, c.Fnet.Value, c.Applied.Value, c.SFriction.Value, c.KFriction.Value);
@@ -138,7 +165,8 @@ namespace crane3d
         formatComponent("Rail", Rail);
         formatComponent("Cart", Cart);
         formatComponent("Line", Line);
-        format(ss, L"  iter# %5lld  dt %5.4f  iter/s %.1f \n", DiscreteStepCounter, DbgFixedTimeStep, DbgAvgIterations);
+        format(ss, L"  iter# %5lld  dt %5.4f  iter/s %.1f \n",
+            DiscreteStepCounter, DbgFixedTimeStep, DbgAvgIterations);
         return ss.str();
     }
 
@@ -172,6 +200,7 @@ namespace crane3d
     void Model::Update(double fixedTime, Force Frail, Force Fcart, Force Fwind)
     {
         ++DiscreteStepCounter;
+        TotalSimulationTime += fixedTime;
 
         // cable driven tension/friction coefficients:
         μ1 = Mpayload / Mcart;           // μ1 = Mc / Mw
@@ -197,7 +226,11 @@ namespace crane3d
                 NonLinearOriginalModel(fixedTime, Frail, Fcart, Fwind);
                 break;
         }
-        GetState().Print();
+
+        if (DbgCsv)
+        {
+            AppendStateToCsv();
+        }
     }
 
     //////////////////////////////////////////////////////////////////////
