@@ -67,8 +67,8 @@ namespace crane3d
             // Invert the alfa angle as required by non-linear models
             Alfa.Pos = _90degs;
             // the crane cannot physically swing more than X degrees due to cart edges
-            Alfa.SetLimits(_45degs, _180degs - _45degs);
-            Beta.SetLimits(-_45degs, _45degs);
+            Alfa.SetLimits(_60degs, _180degs - _60degs);
+            Beta.SetLimits(-_30degs, _30degs);
         }
     }
 
@@ -83,6 +83,8 @@ namespace crane3d
     void Model::SetOutputCsv(const std::string & outCsvFile)
     {
         DbgCsv = std::make_unique<std::ofstream>(outCsvFile);
+        if (!DbgCsv->is_open())
+            throw std::runtime_error("Failed to create CSV file");
         std::locale mylocale(""); 
         DbgCsv->imbue(mylocale);
         *DbgCsv << "t; X; Y; R; Alfa; Beta; pX; pY; pZ\n";
@@ -91,7 +93,7 @@ namespace crane3d
     
     void Model::AppendStateToCsv()
     {
-        ModelState s = GetState(); s.Print();
+        ModelState s = GetState();
         *DbgCsv << TotalSimulationTime << "; " << Rail.Pos << "; "
                 << Cart.Pos   << "; " << Line.Pos   << "; "
                 << Alfa.Pos   << "; " << Beta.Pos   << "; "

@@ -30,5 +30,8 @@
     <ClInclude Include="..\Source\CraneModel\Public\KinematicComponent.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="CraneController.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

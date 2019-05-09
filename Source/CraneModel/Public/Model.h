@@ -2,7 +2,7 @@
 // Distributed under MIT License
 #pragma once
 #include "KinematicComponent.h"
-#include <string> // std::wstring
+#include <string>  // std::wstring
 #include <fstream> // std::ofstream
 
 namespace crane3d
@@ -120,6 +120,11 @@ namespace crane3d
          */
         void SetType(ModelType type);
         ModelType GetType() const { return Type; }
+
+        /**
+         * @return Current time state of the simulation
+         */
+        double GetSimulationTime() const { return TotalSimulationTime; }
 
         /**
          * Writes all simulation data points to a CSV file for later analysis

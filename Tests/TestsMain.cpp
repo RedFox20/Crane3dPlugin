@@ -1,7 +1,7 @@
 // Copyright (c) 2019 - Jorma Rebane Crane3D
 // Distributed under MIT License
 #include "Model.h"
-#include <iostream>
+#include "CraneController.h"
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -21,33 +21,31 @@ static void assert_expr(bool result, const char* expr, const char* message)
 
 using namespace crane3d;
 
-void test_friction()
-{
-    Force push = 1_N;
-    double v = 0.0;
-    Mass m = 1_kg;
-    Accel a;
-    Force F;
-
-    Model model;
-    Force friction;
-}
-
 int main()
 {
-    test_friction();
-
-    Force Frail = 0_N;   // force driving the rail
-    Force Fcart = -25_N; // force driving the cart
-    Force Fwind = 0_N;   // force winding the cable
 
     Model model { ModelType::NonLinearOriginal };
-    model.SetOutputCsv("Original_Y-25N_5s.csv");
-    ModelState state = model.UpdateFixed(0.001, 5.0, Frail, Fcart, Fwind);
-	state.Print();
+    model.SetOutputCsv("NonLinear_Cross_6s_25N.csv");
 
-    auto text = model.GetStateDebugText();
-    print_unicode(text);
+    CraneController controller {&model};
+    controller.SetDrivingForces(25_N, 25_N, 0_N);
+    controller.SetWayPoints({
+        {1.0, -0.30, 0.0},
+        {1.0, +0.30, 0.0},
+        {1.0, 0.0, 0.0}, // center
+        {1.0, 0.0, -0.35},
+        {1.0, 0.0, +0.35},
+        {1.0, 0.0, 0.0}, // center
+    });
+    controller.Run(6.0, 0.001);
+
+    //Force Frail = 0_N;   // force driving the rail
+    //Force Fcart = 25_N; // force driving the cart
+    //Force Fwind = 0_N;   // force winding the cable
+    //ModelState state = model.UpdateFixed(0.001, 5.0, Frail, Fcart, Fwind);
+    //state.Print();
+    //auto text = model.GetStateDebugText();
+    //print_unicode(text);
 
 	system("pause");
 }

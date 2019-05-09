@@ -82,6 +82,7 @@
     <ClInclude Include="..\Source\CraneModel\Public\KinematicComponent.h" />
     <ClInclude Include="..\Source\CraneModel\Public\Kinematics.h" />
     <ClInclude Include="..\Source\CraneModel\Public\Model.h" />
+    <ClInclude Include="CraneController.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
