@@ -34,10 +34,10 @@ namespace crane3d
     using Mass  = Unit<_Mass>;
     using Accel = Unit<_Accel>;
 
-    inline double sign(double x) { return x > 0 ? 1.0 : (x < 0 ? -1.0 : 0.0); }
+    inline double sign(double x) { return x > 0.001 ? 1.0 : (x < -0.001 ? -1.0 : 0.0); }
     template<class T> inline double sign(Unit<T> x) { return sign(x.Value); }
     template<class T> inline Unit<T> abs(Unit<T> x) { return { std::abs(x.Value) }; }
-    template<class T> inline Unit<T> operator*(double x, Unit<T> u) { return { x * u.Value }; }
+    template<class T> inline Unit<T> operator*(double x, Unit<T> u) { return { x*u.Value }; }
     template<class T> inline bool operator>(double x, Unit<T> u) { return x > u.Value; }
 
     // F = ma
@@ -113,7 +113,7 @@ namespace crane3d
 
     inline bool inside_limits(double x, double min, double max)
     {
-        return (min+0.001) < x && x < (max-0.001);
+        return (min+0.01) < x && x < (max-0.01);
     }
 
     //////////////////////////////////////////////////////////////////////

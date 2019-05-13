@@ -40,21 +40,25 @@ namespace crane3d
     // F = f_c*sign(v) + f_v*v
     void Component::UpdateForce(Force applied)
     {
-        SFriction = Force{CoeffStaticColoumb} * sign(Vel);
+        applied = ClampForceByPosLimits(applied); // no Fapp at edges
         KFriction = Force{CoeffKineticViscous} * Vel;
+        SFriction = Force{CoeffStaticColoumb} * sign(Vel);
+
+        // Coloumb static friction: never greater than net force
+        if (SFriction != 0.0 && abs(SFriction) > abs(Fnet))
+            SFriction = sign(SFriction) * abs(Fnet);
 
         Applied = applied;
         Fnet = applied - FrictionDir * (SFriction + KFriction);
         Fnet = dampen(Fnet); // removes sigma sized force flip-flopping
-        Fnet = ClampForceByPosLimits(Fnet); // cannot accelerate when stuck
         NetAcc = Fnet / Mass;
     }
 
     Force Component::ClampForceByPosLimits(Force force) const
     {
-        Force friction = FrictionDir*force;
-        if (friction > 0.0 && Pos > (LimitMax-0.001)) return Force::Zero;
-        if (friction < 0.0 && Pos < (LimitMin+0.001)) return Force::Zero;
+        Force F = FrictionDir*force;
+        if (F > 0.0 && Pos > (LimitMax-0.01)) return Force::Zero;
+        if (F < 0.0 && Pos < (LimitMin+0.01)) return Force::Zero;
         return force;
     }
 

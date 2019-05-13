@@ -67,8 +67,8 @@ namespace crane3d
 
         if (CurrentModel->Name() == "Linear")
         {
-            Alfa.SetLimits(-0.1, +0.1);
-            Beta.SetLimits(-0.1, +0.1);
+            Alfa.SetLimits(-0.05, +0.05);
+            Beta.SetLimits(-0.05, +0.05);
         }
         else
         {
@@ -143,9 +143,9 @@ namespace crane3d
         CraneState state = GetState();
         std::wstringstream ss;
         format(ss, L"Model: %hs \n", CurrentModel->Name().c_str());
-        format(ss, L"  pos %+6.2f, %+6.2f, %+6.2f \n",
+        format(ss, L" payl %+6.2f, %+6.2f, %+6.2f \n",
                     state.PayloadX, state.PayloadY, state.PayloadZ);
-        format(ss, L"  XYR %+6.2f, %+6.2f, %+6.2f \n",
+        format(ss, L" pXYR %+6.2f, %+6.2f, %+6.2f \n",
                     state.RailOffset, state.CartOffset, state.LiftLine);
         format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s \n",
                         Rail.Vel, Cart.Vel, Line.Vel);

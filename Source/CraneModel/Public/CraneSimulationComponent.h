@@ -112,7 +112,7 @@ public:
     
     // Max limit for the line (cm)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
-    float LineLimitMax = 98;
+    float LineLimitMax = 90;
 
     // OUTPUT: X-offset of the rail and Y-offset of the cart (cm)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crane Outputs")

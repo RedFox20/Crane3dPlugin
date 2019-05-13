@@ -25,12 +25,12 @@ namespace crane3d
         virtual string Name() const = 0;
 
         /**
-            * Updates the model using deltaTime as the time step.
-            * @param dt Fixed time step
-            * @param Frail force driving the rail with cart (Fx)
-            * @param Fcart force driving the cart along the rail (Fy)
-            * @param Fwind force winding the lift-line (Fr)
-            */
+         * Updates the model using deltaTime as the time step.
+         * @param dt Fixed time step
+         * @param Frail force driving the rail with cart (Fx)
+         * @param Fcart force driving the cart along the rail (Fy)
+         * @param Fwind force winding the lift-line (Fr)
+         */
         virtual void Update(double dt, Force Frail, Force Fcart, Force Fwind) = 0;
 
         /** @return Current observable state of the Crane */

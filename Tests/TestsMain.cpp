@@ -23,9 +23,8 @@ using namespace crane3d;
 
 int main()
 {
-
     Model model { "NonLinearOriginal" };
-    //model.SetOutputCsv("NonLinear_Cross_6s_25N.csv");
+    model.SetOutputCsv("NonLinear_Cross_6s_25N.csv");
 
     CraneController controller {&model};
     controller.SetDrivingForces(25_N, 25_N, 0_N);
@@ -44,8 +43,9 @@ int main()
     //Force Fwind = 0_N;   // force winding the cable
     //ModelState state = model.UpdateFixed(0.001, 5.0, Frail, Fcart, Fwind);
     //state.Print();
-    //auto text = model.GetStateDebugText();
-    //print_unicode(text);
+
+    auto text = model.GetStateDebugText();
+    print_unicode(text);
 
 	system("pause");
 }
