@@ -143,6 +143,7 @@ namespace crane3d
         CraneState state = GetState();
         std::wstringstream ss;
         format(ss, L"Model: %hs \n", CurrentModel->Name().c_str());
+        format(ss, L" Mpayl %6.1fkg \n", Mpayload.Value);
         format(ss, L" payl %+6.2f, %+6.2f, %+6.2f \n",
                     state.PayloadX, state.PayloadY, state.PayloadZ);
         format(ss, L" pXYR %+6.2f, %+6.2f, %+6.2f \n",

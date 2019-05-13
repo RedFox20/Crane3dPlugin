@@ -23,7 +23,7 @@ using namespace crane3d;
 
 int main()
 {
-    Model model { "NonLinearOriginal" };
+    Model model { "NonLinearComplete" };
     model.SetOutputCsv("NonLinear_Cross_6s_25N.csv");
 
     CraneController controller {&model};

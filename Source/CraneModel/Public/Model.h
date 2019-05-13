@@ -75,6 +75,11 @@ namespace crane3d
          */
         Model(const string& selectedModel = "Linear");
 
+        Model(Model&&)      = delete; // NoMove
+        Model(const Model&) = delete; // NoCopy
+        Model& operator=(Model&&)      = delete; // NoMove
+        Model& operator=(const Model&) = delete; // NoCopy
+
         /**
          * Resets all simulation components. Does not modify customization parameters. 
          */
