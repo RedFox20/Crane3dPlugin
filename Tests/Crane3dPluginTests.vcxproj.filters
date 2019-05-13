@@ -5,11 +5,11 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="tests">
+      <UniqueIdentifier>{5b94104b-98aa-47b5-b3eb-ea196c0396b7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="TestsMain.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\CraneModel\Private\Model.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -18,6 +18,18 @@
     </ClCompile>
     <ClCompile Include="..\Source\CraneModel\Private\Kinematics.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\CraneModel\Private\ModelImplementation.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\CraneModel\Private\CraneState.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\CraneModel\Private\CraneController.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="TestsMain.cpp">
+      <Filter>tests</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -30,7 +42,13 @@
     <ClInclude Include="..\Source\CraneModel\Public\KinematicComponent.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="CraneController.h">
+    <ClInclude Include="..\Source\CraneModel\Public\ModelImplementation.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\CraneModel\Public\CraneState.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\CraneModel\Public\CraneController.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

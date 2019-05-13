@@ -53,8 +53,8 @@ namespace crane3d
     Force Component::ClampForceByPosLimits(Force force) const
     {
         Force friction = FrictionDir*force;
-        if (friction > 0.0 && Pos > (LimitMax-0.01)) return Force::Zero;
-        if (friction < 0.0 && Pos < (LimitMin+0.01)) return Force::Zero;
+        if (friction > 0.0 && Pos > (LimitMax-0.001)) return Force::Zero;
+        if (friction < 0.0 && Pos < (LimitMin+0.001)) return Force::Zero;
         return force;
     }
 

@@ -24,8 +24,8 @@ using namespace crane3d;
 int main()
 {
 
-    Model model { ModelType::NonLinearOriginal };
-    model.SetOutputCsv("NonLinear_Cross_6s_25N.csv");
+    Model model { "NonLinearOriginal" };
+    //model.SetOutputCsv("NonLinear_Cross_6s_25N.csv");
 
     CraneController controller {&model};
     controller.SetDrivingForces(25_N, 25_N, 0_N);

@@ -50,7 +50,7 @@ void UCraneSimulationComponent::BeginPlay()
     UpdateVisibleFields(Model->GetState());
 }
 
-void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::ModelState& state)
+void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::CraneState& state)
 {
     // UE4 is in centimeters, crane model is in meters
     CartPosition.X = (float)(state.RailOffset * 100);
@@ -67,12 +67,24 @@ void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::ModelState& s
     GEngine->AddOnScreenDebugMessage(4, 5.0f, FColor::Red, FString{text.c_str()});
 }
 
+void UCraneSimulationComponent::UpdateModelType()
+{
+    if (CurrentType == ModelType)
+        return;
+    
+    if (UEnum* uenum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECraneModelType"), true))
+    {
+        FString typeName = uenum->GetNameStringByValue((int64)ModelType);
+        Model->SetCurrentModelByName(TCHAR_TO_ANSI(*typeName));
+        CurrentType = ModelType;
+    }
+}
+
 void UCraneSimulationComponent::UpdateModelParameters()
 {
     // update model with parameters
     // we do this every frame to allow full dynamic tweaking of
     // the crane while the game is running
-    Model->SetType(static_cast<crane3d::ModelType>(ModelType));
     Model->Mrail = crane3d::Mass{RailMass};
     Model->Mcart = crane3d::Mass{CartMass};
     Model->Mpayload = crane3d::Mass{PayloadMass};
@@ -84,6 +96,8 @@ void UCraneSimulationComponent::UpdateModelParameters()
     Model->Cart.LimitMax = CartLimitMax / 100.0f;
     Model->Line.LimitMin = LineLimitMin / 100.0f;
     Model->Line.LimitMax = LineLimitMax / 100.0f;
+
+    UpdateModelType();
 }
 
 void UCraneSimulationComponent::TickComponent(float DeltaTime,
@@ -94,7 +108,7 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime,
     UpdateModelParameters();
 
     using crane3d::Force;
-    crane3d::ModelState state = Model->UpdateFixed(1.0/2000.0, DeltaTime,
+    crane3d::CraneState state = Model->UpdateFixed(1.0/2000.0, DeltaTime,
                 Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
 
     UpdateVisibleFields(state);

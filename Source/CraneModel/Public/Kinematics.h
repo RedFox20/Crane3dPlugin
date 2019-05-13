@@ -113,7 +113,7 @@ namespace crane3d
 
     inline bool inside_limits(double x, double min, double max)
     {
-        return (min+0.01) < x && x < (max-0.01);
+        return (min+0.001) < x && x < (max-0.001);
     }
 
     //////////////////////////////////////////////////////////////////////

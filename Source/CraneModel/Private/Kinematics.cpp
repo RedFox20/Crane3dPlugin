@@ -1,3 +1,5 @@
+// Copyright (c) 2019 - Jorma Rebane Crane3D
+// Distributed under MIT License
 #include "Kinematics.h"
 
 namespace crane3d

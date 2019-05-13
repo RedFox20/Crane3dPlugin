@@ -72,6 +72,7 @@ public:
     // Crane simulation type
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
     ECraneModelType ModelType = ECraneModelType::Linear;
+    ECraneModelType CurrentType = ECraneModelType::Linear;
 
     // Mass of the rail (kg)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
@@ -147,7 +148,8 @@ public:
 
 protected:
     void BeginPlay() override;
-    void UpdateVisibleFields(const crane3d::ModelState& state);
+    void UpdateVisibleFields(const crane3d::CraneState& state);
+    void UpdateModelType();
     void UpdateModelParameters();
     void UpdateVisibleComponents();
 

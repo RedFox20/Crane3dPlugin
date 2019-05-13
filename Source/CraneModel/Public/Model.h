@@ -2,51 +2,16 @@
 // Distributed under MIT License
 #pragma once
 #include "KinematicComponent.h"
-#include <string>  // std::wstring
+#include "ModelImplementation.h"
+#include <vector>  // std::vector
 #include <fstream> // std::ofstream
+#include <memory>  // std::shared_ptr
+#include <unordered_map> // std::unordered_map
 
 namespace crane3d
 {
-    //////////////////////////////////////////////////////////////////////
-
-    /**
-     * Allows switching between different crane model dynamics
-     */
-    enum class ModelType
-    {
-        // The most basic crane model with minimum pendulum movement
-        Linear,
-
-        // Non-linear fully dynamic model with all 3 forces
-        NonLinearComplete,
-
-        // Non-linear model with constant pendulum length with 2 control forces.
-        // LiftLine (Fwind) is ignored
-        NonLinearConstLine,
-
-        // Original non-linear fully dynamic model with all 3 forces and refined friction formulae
-        NonLinearOriginal,
-    };
-
-    //////////////////////////////////////////////////////////////////////
-
-    /**
-     * Output state of the model
-     */
-    struct ModelState
-    {
-        double RailOffset = 0.0; // Xw distance of the rail with the cart from the center of the construction frame
-        double CartOffset = 0.0; // Yw distance of the cart from the center of the rail
-        double LiftLine   = 0.0; // R lift-line length
-
-        // Payload 3D coordinates
-        double PayloadX = 0.0;
-        double PayloadY = 0.0;
-        double PayloadZ = 0.0;
-
-        void Print() const;
-    };
-
+    using std::vector;
+    using std::shared_ptr;
     //////////////////////////////////////////////////////////////////////
 
     // Coordinate system of the Crane model
@@ -91,12 +56,12 @@ namespace crane3d
 
     private:
 
-        ModelType Type = ModelType::Linear;
-        double μ1, μ2; // coefficient of friction: payload/cart ratio; payload/railcart ratio
-        
+        shared_ptr<IModelImplementation> CurrentModel;
+        std::unordered_map<string, shared_ptr<IModelImplementation>> Models;
+
         double SimulationTimeSink = 0.0; // accumulator for running N iterations every update
-        int64_t DiscreteStepCounter = 0; // total number of discrete steps taken
         double TotalSimulationTime = 0.0; // total simulation time elapsed
+        int64_t DiscreteStepCounter = 0; // total number of discrete steps taken
 
         // for debugging:
         double DbgFixedTimeStep = 0.0;
@@ -106,9 +71,9 @@ namespace crane3d
     public:
 
         /**
-         * Initialize model with a specific model type
+         * Initialize model with a default model type. Throws if default model doesn't exist.
          */
-        Model(ModelType type = ModelType::Linear);
+        Model(const string& selectedModel = "Linear");
 
         /**
          * Resets all simulation components. Does not modify customization parameters. 
@@ -117,9 +82,19 @@ namespace crane3d
 
         /**
          * Sets the simulation type and Resets the simulation if the type changed.
+         * Throws if model with this name is not found.
          */
-        void SetType(ModelType type);
-        ModelType GetType() const { return Type; }
+        void SetCurrentModelByName(const string& modelName);
+        string GetCurrentModelName() const { return CurrentModel->Name(); }
+
+        /** @return List of all supported model type names */
+        vector<string> GetModelNames() const;
+
+        /**
+         * Register a new model implementation
+         * @param setAsCurrent [false] If TRUE, sets the added model as CurrentModel
+         */
+        void AddModel(shared_ptr<IModelImplementation> model, bool setAsCurrent = false);
 
         /**
          * @return Current time state of the simulation
@@ -142,7 +117,7 @@ namespace crane3d
          * @param Fwind force winding the lift-line (Fr)
          * @return New state of the crane model
          */
-        ModelState UpdateFixed(double fixedTime, double elapsedTime,
+        CraneState UpdateFixed(double fixedTime, double elapsedTime,
                                Force Frail, Force Fcart, Force Fwind);
 
         /**
@@ -160,7 +135,7 @@ namespace crane3d
          * @return Current state of the crane:
          *  distance of the rail, cart, length of lift-line and swing angles of the payload
          */
-        ModelState GetState() const;
+        CraneState GetState() const { return CurrentModel->GetState(); }
 
         /**
          * @return A full multi-line debug string with all dynamic variables shown
@@ -168,16 +143,7 @@ namespace crane3d
         std::wstring GetStateDebugText() const;
 
     private:
-
-        // ------------------
         void AppendStateToCsv();
-        
-        void BasicLinearModel(double dt, Force Frail, Force Fcart, Force Fwind);
-        void NonLinearConstLine(double dt, Force Frail, Force Fcart, Force Fwind);
-        void NonLinearCompleteModel(double dt, Force Frail, Force Fcart, Force Fwind);
-        void NonLinearOriginalModel(double dt, Force Frail, Force Fcart, Force Fwind);
-
-        // ------------------
     };
 
     //////////////////////////////////////////////////////////////////////
