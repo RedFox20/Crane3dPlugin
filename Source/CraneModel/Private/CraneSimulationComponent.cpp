@@ -35,19 +35,33 @@ void UCraneSimulationComponent::AddWindingZ(float axisValue, float multiplier)
     ForceWinding = axisValue * multiplier;
 }
 
-void UCraneSimulationComponent::NextModelType()
+static std::string to_string(ECraneModelType type)
 {
-    int next = (int)ModelType + 1;
-    if (next > (int)ECraneModelType::NonLinearOriginal) next = 0;
-    ModelType = (ECraneModelType)next;
+    if (UEnum* uenum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECraneModelType"), true))
+    {
+        FString typeName = uenum->GetNameStringByValue((int64)type);
+        return TCHAR_TO_ANSI(*typeName);
+    }
+    return {};
 }
 
 void UCraneSimulationComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    Model = std::make_unique<crane3d::Model>();
+    Model = std::make_unique<crane3d::Model>(to_string(ModelType));
+    UpdateModelParameters();
     UpdateVisibleFields(Model->GetState());
+}
+
+void UCraneSimulationComponent::NextModelType()
+{
+    if (UEnum* uenum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECraneModelType"), true))
+    {
+        int next = (int)ModelType + 1;
+        if (next > (int)ECraneModelType::NonLinearOriginal) next = 0;
+        ModelType = (ECraneModelType)next;
+    }
 }
 
 void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::CraneState& state)
@@ -67,19 +81,6 @@ void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::CraneState& s
     GEngine->AddOnScreenDebugMessage(4, 5.0f, FColor::Red, FString{text.c_str()});
 }
 
-void UCraneSimulationComponent::UpdateModelType()
-{
-    if (CurrentType == ModelType)
-        return;
-    
-    if (UEnum* uenum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECraneModelType"), true))
-    {
-        FString typeName = uenum->GetNameStringByValue((int64)ModelType);
-        Model->SetCurrentModelByName(TCHAR_TO_ANSI(*typeName));
-        CurrentType = ModelType;
-    }
-}
-
 void UCraneSimulationComponent::UpdateModelParameters()
 {
     // update model with parameters
@@ -97,7 +98,7 @@ void UCraneSimulationComponent::UpdateModelParameters()
     Model->Line.LimitMin = LineLimitMin / 100.0f;
     Model->Line.LimitMax = LineLimitMax / 100.0f;
 
-    UpdateModelType();
+    Model->SetCurrentModelByName(to_string(ModelType));
 }
 
 void UCraneSimulationComponent::TickComponent(float DeltaTime,
@@ -108,7 +109,7 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime,
     UpdateModelParameters();
 
     using crane3d::Force;
-    crane3d::CraneState state = Model->UpdateFixed(1.0/2000.0, DeltaTime,
+    crane3d::CraneState state = Model->UpdateFixed(1.0/10000.0, DeltaTime,
                 Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
 
     UpdateVisibleFields(state);

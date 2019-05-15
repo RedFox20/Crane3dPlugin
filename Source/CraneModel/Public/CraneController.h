@@ -9,13 +9,18 @@ namespace crane3d
 {
     struct WayPoint
     {
-        double Duration = 1.0; // duration in seconds for following this waypoint
         double X = 0.0;
         double Y = 0.0;
+        double R = 0.0;
+        /**
+         * Duration in seconds for following this waypoint
+         * Duration <= 0.0: no duration, terminate waypoint when we reach it
+         */
+        double Duration = 0.0;
     };
 
     /**
-     * Debug driver controller of the crane
+     * Simple waypoint based controller of the crane
      */
     class CraneController
     {
@@ -24,21 +29,39 @@ namespace crane3d
         std::deque<WayPoint> WayPoints;
 
     public:
-        CraneController(crane3d::Model* model) : Model{model} {}
 
-        // max driving forces applied for following waypoints
+        CraneController(crane3d::Model* model);
+
+        /** max driving forces applied when following waypoints */
         void SetDrivingForces(Force FrailMax, Force FcartMax, Force FwindMax);
 
-        // set waypoints for the crane to follow
+        /**
+         * Adds a new waypoint to follow.
+         * @note X,Y,R are clamped according to Model limits to prevent unreachable coordinates
+         * @param X Desired X position
+         * @param Y Desired Y position
+         * @param R Desired R position
+         * @param duration [0.0] Number of seconds to follow+stay at target pos.
+         *     If duration <= 0.0: terminate waypoint immediately when we reach it.
+         */
+        void AddWayPoint(double X, double Y, double R, double duration = 0.0)
+        {
+            AddWayPoint(WayPoint{ X, Y, R, duration });
+        }
+
+        void AddWayPoint(WayPoint p);
+        
+        /** Set waypoints for the crane to follow */
         void SetWayPoints(const std::vector<WayPoint>& wayPoints);
 
-        // runs the simulation for the specified number of seconds,
-        // while following any waypoints
-        void Run(double runTimeSeconds, double fixedTimeStep);
+        /** Clears the current waypoint list */
+        void ClearWayPoints();
 
-    private:
-        
-        WayPoint NextWayPoint(double fixedTimeStep);
-
+        /** 
+         * Runs the simulation for the specified number of seconds while following waypoints.
+         * @param fixedTimeStep Small delta time
+         * @param runTimeSeconds Total run time of the controller
+         */
+        void Run(double fixedTimeStep, double runTimeSeconds);
     };
 }

@@ -36,6 +36,7 @@ namespace crane3d
 
     inline double sign(double x) { return x > 0.001 ? 1.0 : (x < -0.001 ? -1.0 : 0.0); }
     template<class T> inline double sign(Unit<T> x) { return sign(x.Value); }
+    using std::abs;
     template<class T> inline Unit<T> abs(Unit<T> x) { return { std::abs(x.Value) }; }
     template<class T> inline Unit<T> operator*(double x, Unit<T> u) { return { x*u.Value }; }
     template<class T> inline bool operator>(double x, Unit<T> u) { return x > u.Value; }
@@ -115,6 +116,15 @@ namespace crane3d
     {
         return (min+0.01) < x && x < (max-0.01);
     }
+
+    //////////////////////////////////////////////////////////////////////
+    // Math helper constants
+    constexpr double _PI = 3.14159265358979323846;
+    constexpr double _180degs = _PI;
+    constexpr double _90degs = (_180degs / 2);
+    constexpr double _60degs = _180degs/3.0;
+    constexpr double _45degs = _180degs/4.0;
+    constexpr double _30degs = _180degs/6.0;
 
     //////////////////////////////////////////////////////////////////////
 }

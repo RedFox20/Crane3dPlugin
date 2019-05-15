@@ -14,11 +14,11 @@
 UENUM(BlueprintType)
 enum class ECraneModelType : uint8
 {
-    // The most basic crane model with minimum pendulum movement
-    Linear,
-        
     // Non-linear fully dynamic model with all 3 forces
     NonLinearComplete,
+
+    // The most basic crane model with minimum pendulum movement
+    Linear,
 
     // Non-linear model with constant pendulum length with 2 control forces.
     // LiftLine (Fline) is ignored
@@ -71,8 +71,7 @@ public:
 
     // Crane simulation type
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
-    ECraneModelType ModelType = ECraneModelType::Linear;
-    ECraneModelType CurrentType = ECraneModelType::Linear;
+    ECraneModelType ModelType = ECraneModelType::NonLinearComplete;
 
     // Mass of the rail (kg)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
@@ -92,27 +91,27 @@ public:
 
     // Min limit for the rail (cm)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
-    float RailLimitMin = -30;
+    float RailLimitMin = -28;
 
     // Max limit for the rail (cm)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
-    float RailLimitMax = +30;
+    float RailLimitMax = +28;
     
     // Min limit for the cart (cm)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
-    float CartLimitMin = -35;
+    float CartLimitMin = -39;
     
     // Max limit for the cart (cm)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
-    float CartLimitMax = +35;
+    float CartLimitMax = +39;
     
     // Min limit for the line (cm)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
-    float LineLimitMin = 16;
+    float LineLimitMin = 18;
     
     // Max limit for the line (cm)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Limits")
-    float LineLimitMax = 90;
+    float LineLimitMax = 70;
 
     // OUTPUT: X-offset of the rail and Y-offset of the cart (cm)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crane Outputs")
@@ -149,7 +148,6 @@ public:
 protected:
     void BeginPlay() override;
     void UpdateVisibleFields(const crane3d::CraneState& state);
-    void UpdateModelType();
     void UpdateModelParameters();
     void UpdateVisibleComponents();
 

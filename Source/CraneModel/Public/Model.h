@@ -29,15 +29,15 @@ namespace crane3d
 
         // Rail component
         //   describes distance of the rail from the center of the frame
-        Component Rail { 0.0, -0.30, +0.30 };
+        Component Rail { 0.0, -0.28, +0.28 };
 
         // Cart component
         //   describes distance of the cart from the center of the rail;
-        Component Cart { 0.0, -0.35, +0.35 };
+        Component Cart { 0.0, -0.39, +0.39 };
 
         // Line component
         //   describes the length of the lift-line
-        Component Line { 0.5, +0.16, +0.90 };
+        Component Line { 0.5, +0.18, +0.70 };
 
         // Alfa component
         //   describes α angle between y axis (cart left-right) and the lift-line
@@ -60,7 +60,7 @@ namespace crane3d
         std::unordered_map<string, shared_ptr<IModelImplementation>> Models;
 
         double SimulationTimeSink = 0.0; // accumulator for running N iterations every update
-        double TotalSimulationTime = 0.0; // total simulation time elapsed
+        double TotalSimTime = 0.0; // total simulation time elapsed
         int64_t DiscreteStepCounter = 0; // total number of discrete steps taken
 
         // for debugging:
@@ -104,7 +104,7 @@ namespace crane3d
         /**
          * @return Current time state of the simulation
          */
-        double GetSimulationTime() const { return TotalSimulationTime; }
+        double GetSimulationTime() const { return TotalSimTime; }
 
         /**
          * Writes all simulation data points to a CSV file for later analysis

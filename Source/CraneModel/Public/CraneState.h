@@ -24,6 +24,10 @@ namespace crane3d
         double PayloadY = 0.0;
         double PayloadZ = 0.0;
 
+        // Properly normalized angles in rads, in range [-PI/2, +PI/2]
+        double Alfa = 0.0;
+        double Beta = 0.0;
+
         void Print() const;
     };
 

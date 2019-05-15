@@ -12,24 +12,8 @@ namespace crane3d
 {
     //////////////////////////////////////////////////////////////////////
 
-    // time between each discrete step of the simulation
-    static constexpr double _PI = 3.14159265358979323846;
-    static constexpr double _180degs = _PI;
-    static constexpr double _90degs = (_180degs / 2);
-    static constexpr double _60degs = _180degs/3.0;
-    static constexpr double _45degs = _180degs/4.0;
-    static constexpr double _30degs = _180degs/6.0;
-
-
-    //////////////////////////////////////////////////////////////////////
-
     Model::Model(const string& selectedModel)
     {
-        AddModel(std::make_shared<BasicLinearModel>(*this), true);
-        AddModel(std::make_shared<NonLinearConstLine>(*this));
-        AddModel(std::make_shared<NonLinearComplete>(*this));
-        AddModel(std::make_shared<NonLinearOriginal>(*this));
-
         Rail.CoeffStaticColoumb = 5.0;
         Cart.CoeffStaticColoumb = 7.5;
         Line.CoeffStaticColoumb = 10.0;
@@ -40,13 +24,18 @@ namespace crane3d
 
         Line.FrictionDir = -1.0;
 
-        Reset();
+        AddModel(std::make_shared<BasicLinearModel>(*this));
+        AddModel(std::make_shared<NonLinearConstLine>(*this));
+        AddModel(std::make_shared<NonLinearComplete>(*this));
+        AddModel(std::make_shared<NonLinearOriginal>(*this));
+
+        SetCurrentModelByName(selectedModel);
     }
 
     void Model::Reset()
     {
         SimulationTimeSink = 0.0;
-        TotalSimulationTime = 0.0;
+        TotalSimTime = 0.0;
         DiscreteStepCounter = 0;
 
         Rail.Reset();
@@ -113,18 +102,18 @@ namespace crane3d
         DbgCsv = std::make_unique<std::ofstream>(outCsvFile);
         if (!DbgCsv->is_open())
             throw std::runtime_error("Failed to create CSV file");
-        std::locale mylocale(""); 
+        std::locale mylocale("et_EE.UTF-8"); 
         DbgCsv->imbue(mylocale);
-        *DbgCsv << "t; X; Y; R; Alfa; Beta; pX; pY; pZ\n";
+        *DbgCsv << "t; X; Y; R; Alfa; Beta; payX; payY; payZ\n";
         AppendStateToCsv();
     }
     
     void Model::AppendStateToCsv()
     {
         CraneState s = GetState();
-        *DbgCsv << TotalSimulationTime << "; " << Rail.Pos << "; "
+        *DbgCsv << TotalSimTime << "; " << Rail.Pos << "; "
                 << Cart.Pos   << "; " << Line.Pos   << "; "
-                << Alfa.Pos   << "; " << Beta.Pos   << "; "
+                << s.Alfa     << "; " << s.Beta     << "; "
                 << s.PayloadX << "; " << s.PayloadY << "; " << s.PayloadZ << "\n";
     }
 
@@ -140,14 +129,14 @@ namespace crane3d
 
     std::wstring Model::GetStateDebugText() const
     {
-        CraneState state = GetState();
+        CraneState s = GetState();
         std::wstringstream ss;
         format(ss, L"Model: %hs \n", CurrentModel->Name().c_str());
         format(ss, L" Mpayl %6.1fkg \n", Mpayload.Value);
         format(ss, L" payl %+6.2f, %+6.2f, %+6.2f \n",
-                    state.PayloadX, state.PayloadY, state.PayloadZ);
+                    s.PayloadX, s.PayloadY, s.PayloadZ);
         format(ss, L" pXYR %+6.2f, %+6.2f, %+6.2f \n",
-                    state.RailOffset, state.CartOffset, state.LiftLine);
+                    s.RailOffset, s.CartOffset, s.LiftLine);
         format(ss, L" vXYR %+6.2f, %+6.2f, %+6.2f m/s \n",
                         Rail.Vel, Cart.Vel, Line.Vel);
         format(ss, L"  α  %+6.2f  vα %+6.2f rad/s  aα %+6.2f rad/s^2 \n",
@@ -191,7 +180,7 @@ namespace crane3d
     void Model::Update(double fixedTime, Force Frail, Force Fcart, Force Fwind)
     {
         ++DiscreteStepCounter;
-        TotalSimulationTime += fixedTime;
+        TotalSimTime += fixedTime;
 
         Rail.Mass = Mrail+Mcart;
         Cart.Mass = Mcart;

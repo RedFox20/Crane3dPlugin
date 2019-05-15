@@ -47,6 +47,8 @@ namespace crane3d
         s.PayloadX = s.RailOffset + s.LiftLine * Beta.Pos;
         s.PayloadY = s.CartOffset - s.LiftLine * Alfa.Pos;
         s.PayloadZ = -s.LiftLine;
+        s.Alfa = Alfa.Pos;
+        s.Beta = Beta.Pos;
         return s;
     }
 
@@ -168,6 +170,8 @@ namespace crane3d
         s.PayloadX = s.RailOffset + s.LiftLine * sin(A) * sin(B);
         s.PayloadY = s.CartOffset + s.LiftLine * cos(A);
         s.PayloadZ = -s.LiftLine * sin(A) * cos(B);
+        s.Alfa = A -  _90degs;
+        s.Beta = B;
         return s;
     }
 
