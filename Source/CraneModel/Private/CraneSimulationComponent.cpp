@@ -108,8 +108,11 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime,
 
     UpdateModelParameters();
 
+    constexpr double ItersPerSecond = 10'000.0;
+    constexpr double FixedTimeStep = 1.0 / ItersPerSecond;
+
     using crane3d::Force;
-    crane3d::CraneState state = Model->UpdateFixed(1.0/10000.0, DeltaTime,
+    crane3d::CraneState state = Model->UpdateFixed(FixedTimeStep, DeltaTime,
                 Force{ForceRail}, Force{ForceCart}, Force{ForceWinding});
 
     UpdateVisibleFields(state);

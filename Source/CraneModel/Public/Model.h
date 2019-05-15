@@ -61,7 +61,7 @@ namespace crane3d
 
         double SimulationTimeSink = 0.0; // accumulator for running N iterations every update
         double TotalSimTime = 0.0; // total simulation time elapsed
-        int64_t DiscreteStepCounter = 0; // total number of discrete steps taken
+        int64_t TotalUpdates = 0; // total number of discrete steps taken
 
         // for debugging:
         double DbgFixedTimeStep = 0.0;

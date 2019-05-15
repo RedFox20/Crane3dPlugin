@@ -36,7 +36,7 @@ namespace crane3d
     {
         SimulationTimeSink = 0.0;
         TotalSimTime = 0.0;
-        DiscreteStepCounter = 0;
+        TotalUpdates = 0;
 
         Rail.Reset();
         Cart.Reset();
@@ -152,8 +152,8 @@ namespace crane3d
         formatComponent("Rail", Rail);
         formatComponent("Cart", Cart);
         formatComponent("Line", Line);
-        format(ss, L"  iter# %5lld  dt %5.4f  iter/s %.1f \n",
-            DiscreteStepCounter, DbgFixedTimeStep, DbgAvgIterations);
+        format(ss, L"  iter# %5lld  dt %f  iters/update %.1f  iter/s %.0f\n",
+            TotalUpdates, DbgFixedTimeStep, DbgAvgIterations, TotalUpdates/TotalSimTime);
         return ss.str();
     }
 
@@ -179,7 +179,7 @@ namespace crane3d
 
     void Model::Update(double fixedTime, Force Frail, Force Fcart, Force Fwind)
     {
-        ++DiscreteStepCounter;
+        ++TotalUpdates;
         TotalSimTime += fixedTime;
 
         Rail.Mass = Mrail+Mcart;
