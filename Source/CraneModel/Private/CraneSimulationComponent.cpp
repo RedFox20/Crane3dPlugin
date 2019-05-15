@@ -142,7 +142,7 @@ void UCraneSimulationComponent::UpdateVisibleComponents()
     dir.Normalize();
     FRotator rot = dir.Rotation();
     rot.Pitch -= 90;
-    PayloadComponent->RelativeRotation = rot;
+    PayloadComponent->SetWorldRotation(rot);
 
     // cable line
     DrawDebugLine(GetWorld(), CartComponent->GetComponentLocation(),
