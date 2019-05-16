@@ -45,7 +45,7 @@ int main()
     //Force Frail = 0_N;   // force driving the rail
     //Force Fcart = 25_N; // force driving the cart
     //Force Fwind = 0_N;   // force winding the cable
-    //ModelState state = model.UpdateFixed(0.001, 5.0, Frail, Fcart, Fwind);
+    //CraneState state = model.UpdateFixed(0.001, 5.0, Frail, Fcart, Fwind);
     //state.Print();
 
     auto text = model.GetStateDebugText();
