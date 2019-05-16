@@ -108,7 +108,7 @@ void UCraneSimulationComponent::TickComponent(float DeltaTime,
 
     UpdateModelParameters();
 
-    constexpr double ItersPerSecond = 10'000.0;
+    constexpr double ItersPerSecond = 1'000'000.0;
     constexpr double FixedTimeStep = 1.0 / ItersPerSecond;
 
     using crane3d::Force;
