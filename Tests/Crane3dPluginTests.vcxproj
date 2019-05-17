@@ -76,7 +76,6 @@
     <ClCompile Include="..\Source\CraneModel\Private\CraneController.cpp" />
     <ClCompile Include="..\Source\CraneModel\Private\CraneState.cpp" />
     <ClCompile Include="..\Source\CraneModel\Private\KinematicComponent.cpp" />
-    <ClCompile Include="..\Source\CraneModel\Private\Kinematics.cpp" />
     <ClCompile Include="..\Source\CraneModel\Private\Model.cpp" />
     <ClCompile Include="..\Source\CraneModel\Private\ModelImplementation.cpp" />
     <ClCompile Include="TestsMain.cpp" />

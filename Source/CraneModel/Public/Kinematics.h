@@ -11,7 +11,7 @@ namespace crane3d
     template<class T> struct Unit
     {
         double Value = 0.0;
-        static const Unit Zero;
+        static constexpr Unit Zero() { return { 0.0 }; }
         Unit operator+(Unit b) const { return { Value + b.Value }; }
         Unit operator-(Unit b) const { return { Value - b.Value }; }
         bool operator>(Unit b) const { return Value > b.Value; }

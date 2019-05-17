@@ -67,13 +67,10 @@ void UCraneSimulationComponent::NextModelType()
 void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::CraneState& state)
 {
     // UE4 is in centimeters, crane model is in meters
-    CartPosition.X = (float)(state.RailOffset * 100);
-    CartPosition.Y = (float)(state.CartOffset * 100);
-    PayloadPosition = FVector{
-        (float)(state.PayloadX * 100),
-        (float)(state.PayloadY * 100),
-        (float)(state.PayloadZ * 100)
-    };
+    CartPosition.X = float(state.RailOffset * 100);
+    CartPosition.Y = float(state.CartOffset * 100);
+    PayloadPosition = FVector(state.PayloadX, state.PayloadY,state.PayloadZ) * 100;
+
     auto text = Model->GetStateDebugText();
     GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Red, FString::Printf(L"Frail: %.2f N", ForceRail));
     GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Red, FString::Printf(L"Fcart: %.2f N", ForceCart));

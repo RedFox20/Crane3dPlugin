@@ -10,8 +10,8 @@ namespace crane3d
     void Component::Reset()
     {
         Pos = Vel = 0.0;
-        Acc = NetAcc = Accel::Zero;
-        Applied = SFriction = KFriction = Fnet = Force::Zero;
+        Acc = NetAcc = Accel::Zero();
+        Applied = SFriction = KFriction = Fnet = Force::Zero();
     }
 
     void Component::Update(Accel newAcc, double dt)
@@ -57,8 +57,8 @@ namespace crane3d
     Force Component::ClampForceByPosLimits(Force force) const
     {
         Force F = FrictionDir*force;
-        if (F > 0.0 && Pos > (LimitMax-0.01)) return Force::Zero;
-        if (F < 0.0 && Pos < (LimitMin+0.01)) return Force::Zero;
+        if (F > 0.0 && Pos > (LimitMax-0.01)) return Force::Zero();
+        if (F < 0.0 && Pos < (LimitMin+0.01)) return Force::Zero();
         return force;
     }
 

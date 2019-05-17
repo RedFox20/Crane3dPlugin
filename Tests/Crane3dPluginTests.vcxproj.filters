@@ -16,9 +16,6 @@
     <ClCompile Include="..\Source\CraneModel\Private\KinematicComponent.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\CraneModel\Private\Kinematics.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\CraneModel\Private\ModelImplementation.cpp">
       <Filter>src</Filter>
     </ClCompile>

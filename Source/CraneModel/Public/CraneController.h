@@ -7,6 +7,8 @@
 
 namespace crane3d
 {
+    //////////////////////////////////////////////////////////////////////
+
     struct WayPoint
     {
         double X = 0.0;
@@ -37,7 +39,7 @@ namespace crane3d
 
         /**
          * Adds a new waypoint to follow.
-         * @note X,Y,R are clamped according to Model limits to prevent unreachable coordinates
+         * @note X,Y,R are clamped to Model limits to prevent unreachable coordinates
          * @param X Desired X position
          * @param Y Desired Y position
          * @param R Desired R position
@@ -64,4 +66,6 @@ namespace crane3d
          */
         void Run(double fixedTimeStep, double runTimeSeconds);
     };
+
+    //////////////////////////////////////////////////////////////////////
 }
