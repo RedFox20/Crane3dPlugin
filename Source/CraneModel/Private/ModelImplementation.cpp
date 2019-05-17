@@ -17,9 +17,9 @@ namespace crane3d
 
     void BasicLinearModel::Update(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail);
-        Cart.UpdateForce(Fcart);
-        Line.UpdateForce(Fwind);
+        Rail.ApplyForce(Frail);
+        Cart.ApplyForce(Fcart);
+        Line.ApplyForce(Fwind);
 
         // cable driven tension/friction coefficients:
         double μ1 = Model.Mpayload / Cart.Mass; // μ1 = Mc / Mw
@@ -56,9 +56,9 @@ namespace crane3d
 
     void NonLinearConstLine::Update(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail);
-        Cart.UpdateForce(Fcart);
-        Line.UpdateForce(Fwind);
+        Rail.ApplyForce(Frail);
+        Cart.ApplyForce(Fcart);
+        Line.ApplyForce(Fwind);
 
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
@@ -93,9 +93,9 @@ namespace crane3d
 
     void NonLinearComplete::Update(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail);
-        Cart.UpdateForce(Fcart);
-        Line.UpdateForce(Fwind);
+        Rail.ApplyForce(Frail);
+        Cart.ApplyForce(Fcart);
+        Line.ApplyForce(Fwind);
 
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);
@@ -128,9 +128,9 @@ namespace crane3d
 
     void NonLinearOriginal::Update(double dt, Force Frail, Force Fcart, Force Fwind)
     {
-        Rail.UpdateForce(Frail);
-        Cart.UpdateForce(Fcart);
-        Line.UpdateForce(Fwind);
+        Rail.ApplyForce(Frail);
+        Cart.ApplyForce(Fcart);
+        Line.ApplyForce(Fwind);
 
         double sA = sin(Alfa.Pos), cA = cos(Alfa.Pos);
         double sB = sin(Beta.Pos), cB = cos(Beta.Pos);

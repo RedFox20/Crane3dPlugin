@@ -51,7 +51,7 @@ namespace crane3d
         void Update(Accel new_acc, double dt);
 
         // Apply driving forces and friction forces
-        void UpdateForce(Force applied);
+        void ApplyForce(Force applied);
 
         // Prevent applying force when against frame
         Force ClampForceByPosLimits(Force force) const;

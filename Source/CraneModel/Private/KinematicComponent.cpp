@@ -38,7 +38,7 @@ namespace crane3d
 
     // Simplified Coloumb-Viscous friction model:
     // F = f_c*sign(v) + f_v*v
-    void Component::UpdateForce(Force applied)
+    void Component::ApplyForce(Force applied)
     {
         applied = ClampForceByPosLimits(applied); // no Fapp at edges
         KFriction = Force{CoeffKineticViscous} * Vel;
