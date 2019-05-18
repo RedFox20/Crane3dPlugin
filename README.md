@@ -1,10 +1,10 @@
 # 3D Crane physics model plugin for Unreal Engine 4
 
-![Image of 3DCrane](cranevr.jpg)
-
 This repository contains a portable C++17 library for simulation INTECO 3DCrane and necessary Unreal Engine 4 bindings for visualization. For detailed description of this library, you can read the Diploma Thesis in Estonian [Jorma_Rebane_Diplomitoo.pdf](Jorma_Rebane_Diplomitoo.pdf)
 
 You should also take a look at a simple project which uses this plugin: [CraneVR](https://github.com/RedFox20/CraneVR)
+
+![Image of 3DCrane](cranevr.jpg)
 
 ## Setting up a basic build environment
 The original version is built and tested with **Visual Studio 2017**, using C++17. For testing the plugin in a standalone console application, you can open Tests/Crane3dPluginTests.sln
