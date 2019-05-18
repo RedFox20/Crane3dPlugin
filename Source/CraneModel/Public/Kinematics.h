@@ -47,6 +47,8 @@ namespace crane3d
     // a = F/m
     inline Accel operator/(Force F, Mass m) { return { F.Value / m.Value }; }
 
+    namespace literals
+    {
     constexpr Force operator""_N (long double newtons) { return { double(newtons) }; }
     constexpr Mass  operator""_kg(long double kilos)   { return { double(kilos)   }; }
     constexpr Accel operator""_ms2(long double accel)  { return { double(accel)   }; }
@@ -54,6 +56,8 @@ namespace crane3d
     constexpr Force operator""_N (unsigned long long newtons) { return { double(newtons) }; }
     constexpr Mass  operator""_kg(unsigned long long kilos)   { return { double(kilos)   }; }
     constexpr Accel operator""_ms2(unsigned long long accel)  { return { double(accel)   }; }
+    }
+    using namespace literals;
 
     //////////////////////////////////////////////////////////////////////
 

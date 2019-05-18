@@ -62,7 +62,10 @@ namespace crane3d
                 else // this is an immediate waypoint, terminate if we arrive closeby
                 {
                     if (abs(dx) < 0.001 && abs(dy) < 0.001 && abs(dr) < 0.001) {
-                        WayPoints.pop_front();
+                        first.Wait -= fixedTimeStep;
+                        if (first.Wait < 0.0) {
+                            WayPoints.pop_front();
+                        }
                     }
                 }
             }

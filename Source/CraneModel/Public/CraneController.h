@@ -19,6 +19,9 @@ namespace crane3d
          * Duration <= 0.0: no duration, terminate waypoint when we reach it
          */
         double Duration = 0.0;
+
+        // How long to wait after reaching destination?
+        double Wait = 0.0;
     };
 
     /**
