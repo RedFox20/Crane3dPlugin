@@ -73,6 +73,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
     ECraneModelType ModelType = ECraneModelType::NonLinearComplete;
 
+    // Number of iterations per second for the crane simulation model
+    // Recommended value at least 1000 and not greater than 1'000'000
+    // Higher values are slower, but more accurate
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
+    int IterationsPerSecond = 10000;
+
     // Mass of the rail (kg)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
     float RailMass = 2.2f;
