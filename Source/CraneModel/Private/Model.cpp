@@ -69,6 +69,11 @@ namespace crane3d
         }
     }
 
+    void Model::SetIntegrationMethod(IntegrationMethod method)
+    {
+        Rail.Method = Cart.Method = Line.Method = Alfa.Method = Beta.Method = method;
+    }
+
     void Model::SetCurrentModelByName(const string& modelName)
     {
         auto model = Models.find(modelName);
@@ -131,7 +136,7 @@ namespace crane3d
     {
         CraneState s = GetState();
         std::wstringstream ss;
-        format(ss, L"Model: %hs \n", CurrentModel->Name().c_str());
+        format(ss, L"Model: %hs %hs\n", CurrentModel->Name().c_str(), to_string(Cart.Method));
         format(ss, L" Mpayl %6.1fkg \n", Mpayload.Value);
         format(ss, L" payl %+6.2f, %+6.2f, %+6.2f \n",
                     s.PayloadX, s.PayloadY, s.PayloadZ);

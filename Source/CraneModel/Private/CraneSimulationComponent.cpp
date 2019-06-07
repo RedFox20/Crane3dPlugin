@@ -1,7 +1,7 @@
 // Copyright (c) 2019 - Jorma Rebane 3DCrane UE4
 // Distributed under MIT License
 #include "CraneSimulationComponent.h"
-#include "EngineMinimal.h"
+#include "Engine/Engine.h"
 #include "DrawDebugHelpers.h"
 
 UCraneSimulationComponent::UCraneSimulationComponent()
@@ -56,12 +56,16 @@ void UCraneSimulationComponent::BeginPlay()
 
 void UCraneSimulationComponent::NextModelType()
 {
-    if (UEnum* uenum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECraneModelType"), true))
-    {
-        int next = (int)ModelType + 1;
-        if (next > (int)ECraneModelType::NonLinearOriginal) next = 0;
-        ModelType = (ECraneModelType)next;
-    }
+    int next = (int)ModelType + 1;
+    if (next > (int)ECraneModelType::NonLinearOriginal) next = 0;
+    ModelType = (ECraneModelType)next;
+}
+
+void UCraneSimulationComponent::NextIntegrationMethod()
+{
+    int next = (int)IntegrationMethod + 1;
+    if (next > (int)EIntegrationMethod::RK4) next = 0;
+    IntegrationMethod = (EIntegrationMethod)next;
 }
 
 void UCraneSimulationComponent::UpdateVisibleFields(const crane3d::CraneState& state)
@@ -96,6 +100,7 @@ void UCraneSimulationComponent::UpdateModelParameters()
     Model->Line.LimitMax = LineLimitMax / 100.0f;
 
     Model->SetCurrentModelByName(to_string(ModelType));
+    Model->SetIntegrationMethod((crane3d::IntegrationMethod)IntegrationMethod);
 }
 
 void UCraneSimulationComponent::TickComponent(float DeltaTime,

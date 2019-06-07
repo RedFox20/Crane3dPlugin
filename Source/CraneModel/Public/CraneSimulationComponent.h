@@ -29,6 +29,24 @@ enum class ECraneModelType : uint8
 };
 
 
+UENUM(BlueprintType)
+enum class EIntegrationMethod : uint8
+{
+    // Default; Accurate approximation based on velocity
+    VelocityVerlet,
+    // classic, very inaccurate: 
+    // 1) update pos
+    // 2) update vel
+    ExplicitEuler,
+    // more stable, but still not perfect
+    // 1) update vel
+    // 2) update pos
+    SemiImplicitEuler,
+    // Runge-Kutta, 4 samples
+    RK4,
+};
+
+
 /**
  * Adapts crane simulation and parameters as an actor component
  */
@@ -72,6 +90,10 @@ public:
     // Crane simulation type
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
     ECraneModelType ModelType = ECraneModelType::NonLinearComplete;
+
+    // Crane simulation integration method
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crane Parameters")
+    EIntegrationMethod IntegrationMethod = EIntegrationMethod::VelocityVerlet;
 
     // Number of iterations per second for the crane simulation model
     // Recommended value at least 1000 and not greater than 1'000'000
@@ -150,6 +172,10 @@ public:
     // Switches to the next simulation model
     UFUNCTION(BlueprintCallable, Category = "Crane Misc. Inputs")
     void NextModelType();
+
+    // Switches to the next integration method
+    UFUNCTION(BlueprintCallable, Category = "Crane Misc. Inputs")
+    void NextIntegrationMethod();
 
 protected:
     void BeginPlay() override;

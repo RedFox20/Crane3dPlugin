@@ -61,14 +61,14 @@ namespace crane3d
 
     //////////////////////////////////////////////////////////////////////
 
-    // compute new velocity using Euler's method:
+    // compute new velocity using Explicit Euler method:
     // v' = v + a*dt
-    inline double integrate_euler_velocity(double v0, Accel a, double dt)
+    inline double integrate_euler_vel(double v0, Accel a, double dt)
     {
         return v0 + a.Value*dt;
     }
 
-    // compute new position using Euler's method:
+    // compute new position using Explicit Euler method:
     // x' = x + v'*dt
     inline double integrate_euler_pos(double x, double v1, double dt)
     {

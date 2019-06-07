@@ -73,7 +73,7 @@ namespace crane3d
         /**
          * Initialize model with a default model type. Throws if default model doesn't exist.
          */
-        Model(const string& selectedModel = "Linear");
+        explicit Model(const string& selectedModel = "Linear");
 
         Model(Model&&)      = delete; // NoMove
         Model(const Model&) = delete; // NoCopy
@@ -84,6 +84,12 @@ namespace crane3d
          * Resets all simulation components. Does not modify customization parameters. 
          */
         void Reset();
+
+        /**
+         * Changes the integration method between:
+         * VelocityVerlet, ExplicitEuler, SemiImplicitEuler, RK4, ...
+         */
+        void SetIntegrationMethod(IntegrationMethod method);
 
         /**
          * Sets the simulation type and Resets the simulation if the type changed.
